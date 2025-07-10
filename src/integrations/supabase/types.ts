@@ -14,7 +14,131 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      levels: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          name_fr: string
+          order_index: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          name_fr: string
+          order_index: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          name_fr?: string
+          order_index?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          description_fr: string | null
+          duration_months: number
+          id: string
+          is_free: boolean
+          name: string
+          name_fr: string
+          price: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          description_fr?: string | null
+          duration_months?: number
+          id?: string
+          is_free?: boolean
+          name: string
+          name_fr: string
+          price?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          description_fr?: string | null
+          duration_months?: number
+          id?: string
+          is_free?: boolean
+          name?: string
+          name_fr?: string
+          price?: number
+        }
+        Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          gumroad_order_id: string | null
+          id: string
+          plan_id: string
+          starts_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          gumroad_order_id?: string | null
+          id?: string
+          plan_id: string
+          starts_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          gumroad_order_id?: string | null
+          id?: string
+          plan_id?: string
+          starts_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
