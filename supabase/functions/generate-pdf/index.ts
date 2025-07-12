@@ -238,27 +238,33 @@ serve(async (req) => {
     const latexContent = generateLatexTemplate(userInfo);
     logStep("LaTeX content generated", { contentLength: latexContent.length });
 
-    // Here you would normally send the LaTeX to your XeLaTeX compilation service
-    // For now, we'll simulate the process and return a download URL
-    
-    // Simulate compilation time
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Send LaTeX to your Hostinger VPS for compilation
+    const vpsResponse = await fetch('https://VOTRE-DOMAINE-HOSTINGER.com/api/compile-latex', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer YOUR_VPS_API_KEY' // Optionnel pour sécuriser
+      },
+      body: JSON.stringify({
+        latex: latexContent,
+        filename: `${user.id}-${Date.now()}-${userInfo.level_code}`,
+        user_id: user.id,
+        level: userInfo.level_code
+      })
+    });
 
-    // In a real implementation, you would:
-    // 1. Send latexContent to your Hostinger VPS
-    // 2. Compile with XeLaTeX
-    // 3. Store the PDF in a public location
-    // 4. Return the download URL
+    if (!vpsResponse.ok) {
+      throw new Error(`VPS compilation failed: ${vpsResponse.status}`);
+    }
 
-    // For demonstration, we'll create a blob URL (in real implementation, this would be your VPS URL)
-    const pdfBlob = new Blob([latexContent], { type: 'application/pdf' });
-    const mockDownloadUrl = `https://your-hostinger-vps.com/generated-pdfs/${user.id}/${Date.now()}-${userInfo.level_code}.pdf`;
+    const vpsData = await vpsResponse.json();
+    const downloadUrl = vpsData.pdf_url;
 
-    logStep("PDF generation completed", { downloadUrl: mockDownloadUrl });
+    logStep("PDF generation completed", { downloadUrl });
 
     return new Response(JSON.stringify({ 
       success: true,
-      download_url: mockDownloadUrl,
+      download_url: downloadUrl,
       message: "PDF generated successfully"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
