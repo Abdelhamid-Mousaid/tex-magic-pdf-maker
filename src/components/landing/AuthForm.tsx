@@ -63,19 +63,19 @@ const AuthForm = () => {
   };
 
   return (
-    <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
-      <CardHeader className="text-center pb-6">
-        <CardTitle className="text-2xl text-gray-900">
+    <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm w-full max-w-md mx-auto">
+      <CardHeader className="text-center pb-4 sm:pb-6 px-4 sm:px-6">
+        <CardTitle className="text-xl sm:text-2xl text-gray-900">
           {isSignUp ? 'Créer un Compte' : 'Se Connecter'}
         </CardTitle>
-        <CardDescription className="text-gray-600">
+        <CardDescription className="text-sm sm:text-base text-gray-600">
           {isSignUp 
             ? 'Commencez avec votre plan gratuit aujourd\'hui' 
             : 'Connectez-vous à votre compte'
           }
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 sm:px-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           {isSignUp && (
             <div className="space-y-2">
@@ -127,7 +127,7 @@ const AuthForm = () => {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg font-medium"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-sm sm:text-lg font-medium"
           >
             {loading ? (
               'Chargement...'

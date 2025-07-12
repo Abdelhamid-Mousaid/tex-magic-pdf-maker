@@ -234,47 +234,47 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose }) => {
   }
 
   return (
-    <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-      <CardHeader className="pb-6">
-        <div className="flex items-center justify-between">
+    <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm max-w-4xl mx-auto">
+      <CardHeader className="pb-4 sm:pb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-3">
-            <div className="bg-blue-100 p-3 rounded-full">
-              <User className="h-6 w-6 text-blue-600" />
+            <div className="bg-blue-100 p-2 sm:p-3 rounded-full">
+              <User className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
             </div>
             <div>
-              <CardTitle className="text-xl text-gray-900">Informations Personnelles</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-lg sm:text-xl text-gray-900">Informations Personnelles</CardTitle>
+              <CardDescription className="text-sm">
                 Ces informations apparaîtront sur vos documents PDF générés
               </CardDescription>
             </div>
           </div>
           {onClose && (
-            <Button onClick={onClose} variant="outline" size="sm">
+            <Button onClick={onClose} variant="outline" size="sm" className="mt-4 sm:mt-0">
               <X className="h-4 w-4" />
             </Button>
           )}
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
         {/* Email (non-éditable) */}
         <div className="space-y-2">
           <Label className="text-sm font-medium text-gray-700">Adresse Email</Label>
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
             <Input
               value={user?.email || ''}
               disabled
-              className="bg-gray-50 text-gray-500"
+              className="bg-gray-50 text-gray-500 text-sm"
             />
-            <Badge variant="secondary" className="text-xs">Non modifiable</Badge>
+            <Badge variant="secondary" className="text-xs w-fit">Non modifiable</Badge>
           </div>
         </div>
 
         {/* Nom complet */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
             <Label className="text-sm font-medium text-gray-700">Nom Complet</Label>
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
               <Badge variant={profile.name_changes_count >= 2 ? "destructive" : "secondary"} className="text-xs">
                 {profile.name_changes_count}/2 modifications
               </Badge>
@@ -292,30 +292,32 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose }) => {
           </div>
           
           {editingField === 'full_name' ? (
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
               <Input
                 value={editValues.full_name || ''}
                 onChange={(e) => setEditValues({ ...editValues, full_name: e.target.value })}
                 placeholder="Votre nom complet"
                 disabled={saving}
               />
-              <Button
-                onClick={() => handleSave('full_name')}
-                disabled={saving || !editValues.full_name?.trim()}
-                size="sm"
-                className="h-10"
-              >
-                <Save className="h-4 w-4" />
-              </Button>
-              <Button
-                onClick={handleCancel}
-                variant="outline"
-                size="sm"
-                className="h-10"
-                disabled={saving}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex space-x-2">
+                <Button
+                  onClick={() => handleSave('full_name')}
+                  disabled={saving || !editValues.full_name?.trim()}
+                  size="sm"
+                  className="h-10"
+                >
+                  <Save className="h-4 w-4" />
+                </Button>
+                <Button
+                  onClick={handleCancel}
+                  variant="outline"
+                  size="sm"
+                  className="h-10"
+                  disabled={saving}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           ) : (
             <Input

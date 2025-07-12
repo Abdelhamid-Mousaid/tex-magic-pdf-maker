@@ -35,17 +35,17 @@ const features: FeatureItem[] = [
 
 const FeaturesSection = () => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {features.map((feature, index) => {
         const IconComponent = feature.icon;
         return (
-          <div key={index} className="flex items-start space-x-4">
-            <div className={`${feature.bgColor} p-3 rounded-full`}>
-              <IconComponent className={`h-6 w-6 ${feature.iconColor}`} />
+          <div key={index} className="flex items-start space-x-3 sm:space-x-4">
+            <div className={`${feature.bgColor} p-2.5 sm:p-3 rounded-full flex-shrink-0`}>
+              <IconComponent className={`h-5 w-5 sm:h-6 sm:w-6 ${feature.iconColor}`} />
             </div>
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900">{feature.title}</h3>
-              <p className="text-gray-600">{feature.description}</p>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900">{feature.title}</h3>
+              <p className="text-sm sm:text-base text-gray-600">{feature.description}</p>
             </div>
           </div>
         );

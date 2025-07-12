@@ -160,34 +160,34 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center space-x-4">
-            <BookOpen className="h-10 w-10 text-blue-600" />
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <BookOpen className="h-8 w-8 sm:h-10 sm:w-10 text-blue-600" />
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Math Planner</h1>
-              <p className="text-gray-600">Tableau de bord personnel</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Math Planner</h1>
+              <p className="text-sm sm:text-base text-gray-600">Tableau de bord personnel</p>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
-            <Button onClick={() => setShowProfile(true)} variant="outline" className="flex items-center space-x-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+            <Button onClick={() => setShowProfile(true)} variant="outline" className="flex items-center space-x-2 text-sm sm:text-base">
               <User className="h-4 w-4" />
-              <span>Mon Profil</span>
+              <span className="hidden sm:inline">Mon Profil</span>
             </Button>
-            <Button onClick={handleSignOut} variant="outline" className="flex items-center space-x-2">
+            <Button onClick={handleSignOut} variant="outline" className="flex items-center space-x-2 text-sm sm:text-base">
               <LogOut className="h-4 w-4" />
-              <span>Déconnexion</span>
+              <span className="hidden sm:inline">Déconnexion</span>
             </Button>
           </div>
         </div>
 
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
             Bienvenue, {profile?.full_name || 'Utilisateur'}!
           </h2>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
             <Badge variant={subscription?.subscription_plans.is_free ? "secondary" : "default"} className="text-sm">
               {subscription?.subscription_plans.name_fr || 'Plan en cours de chargement...'}
             </Badge>
@@ -200,9 +200,9 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-6 lg:space-y-8">
             {/* Current Plan */}
             <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader>
@@ -216,7 +216,7 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
                     <span className="text-lg font-semibold text-gray-900">
                       {subscription?.subscription_plans.name_fr}
                     </span>
@@ -228,7 +228,7 @@ const Dashboard = () => {
                   <Button
                     onClick={handleGenerateLatex}
                     disabled={isGenerating}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-sm sm:text-base"
                   >
                     {isGenerating ? (
                       'Génération en cours...'
@@ -244,7 +244,7 @@ const Dashboard = () => {
                     <Button
                       onClick={handleDownloadPdf}
                       variant="outline"
-                      className="w-full border-blue-600 text-blue-600 hover:bg-blue-50"
+                      className="w-full border-blue-600 text-blue-600 hover:bg-blue-50 text-sm sm:text-base"
                     >
                       <Download className="h-4 w-4 mr-2" />
                       Télécharger le fichier .pdf
@@ -258,7 +258,7 @@ const Dashboard = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 lg:space-y-6">
             {/* Upgrade Plans */}
             <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader>
@@ -273,7 +273,7 @@ const Dashboard = () => {
               <CardContent>
                 <Button
                   onClick={() => setShowPlans(true)}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm sm:text-base"
                 >
                   Voir les Plans
                 </Button>
@@ -286,15 +286,15 @@ const Dashboard = () => {
                 <CardTitle>Statistiques</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex justify-between">
+                <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Documents générés</span>
                   <span className="font-semibold">-</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Plan actuel</span>
-                  <span className="font-semibold">{subscription?.subscription_plans.name_fr}</span>
+                  <span className="font-semibold text-xs sm:text-sm truncate max-w-24 sm:max-w-none">{subscription?.subscription_plans.name_fr}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Statut</span>
                   <Badge variant="default" className="text-xs">Actif</Badge>
                 </div>
