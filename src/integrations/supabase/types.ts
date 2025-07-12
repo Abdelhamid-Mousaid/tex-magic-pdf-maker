@@ -104,16 +104,18 @@ export type Database = {
         }
         Relationships: []
       }
-      templates: {
+      system_templates: {
         Row: {
           created_at: string
           description: string | null
           file_path: string
           file_size: number | null
           id: string
+          is_active: boolean
+          level_id: string | null
           name: string
+          plan_id: string | null
           updated_at: string
-          user_id: string
         }
         Insert: {
           created_at?: string
@@ -121,9 +123,11 @@ export type Database = {
           file_path: string
           file_size?: number | null
           id?: string
+          is_active?: boolean
+          level_id?: string | null
           name: string
+          plan_id?: string | null
           updated_at?: string
-          user_id: string
         }
         Update: {
           created_at?: string
@@ -131,11 +135,28 @@ export type Database = {
           file_path?: string
           file_size?: number | null
           id?: string
+          is_active?: boolean
+          level_id?: string | null
           name?: string
+          plan_id?: string | null
           updated_at?: string
-          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "system_templates_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_templates_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_subscriptions: {
         Row: {

@@ -14,7 +14,7 @@ const logStep = (step: string, details?: any) => {
 };
 
 // PDF generator using jsPDF
-const generatePDF = (userInfo: any): Uint8Array => {
+const generatePDF = (userInfo: any, templateContent?: string | null): Uint8Array => {
   const currentDate = new Date().toLocaleDateString('fr-FR', {
     year: 'numeric',
     month: 'long',
@@ -43,7 +43,7 @@ const generatePDF = (userInfo: any): Uint8Array => {
   // Title page
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text('Math Planner', 105, 30, { align: 'center' });
+  doc.text(templateContent ? 'Template Personnalisé - Math Planner' : 'Math Planner', 105, 30, { align: 'center' });
   
   doc.setFontSize(16);
   doc.text(`Planificateur Mathématiques - ${userInfo.level}`, 105, 45, { align: 'center' });
@@ -61,12 +61,26 @@ const generatePDF = (userInfo: any): Uint8Array => {
     doc.text(`Année Scolaire: ${userInfo.academic_year}`, 105, 110, { align: 'center' });
   }
   
-  doc.text(currentDate, 105, 130, { align: 'center' });
+  if (templateContent) {
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Généré à partir d\'un template personnalisé', 105, 125, { align: 'center' });
+    currentY = 140;
+  } else {
+    currentY = 130;
+  }
+  
+  doc.text(currentDate, 105, currentY, { align: 'center' });
 
   // Abstract
-  currentY = 160;
+  currentY += 30;
   addText('Résumé', 20, 14, 'bold');
-  addText(`Ce document de planification mathématique a été généré automatiquement par Math Planner pour ${userInfo.name}, niveau ${userInfo.level}. Il est conçu spécialement pour le système éducatif marocain et comprend les chapitres et exercices adaptés au programme officiel.`, 20, 11);
+  
+  if (templateContent) {
+    addText(`Ce document personnalisé a été généré à partir d'un template système pour ${userInfo.name}, niveau ${userInfo.level}. Le contenu a été adapté selon les spécifications du template administrateur et le programme officiel marocain.`, 20, 11);
+  } else {
+    addText(`Ce document de planification mathématique a été généré automatiquement par Math Planner pour ${userInfo.name}, niveau ${userInfo.level}. Il est conçu spécialement pour le système éducatif marocain et comprend les chapitres et exercices adaptés au programme officiel.`, 20, 11);
+  }
 
   // New page for content
   doc.addPage();
@@ -253,10 +267,38 @@ serve(async (req) => {
       throw new Error("Missing userInfo in request body");
     }
 
-    logStep("User info received", { level: userInfo.level, name: userInfo.name });
+    logStep("User info received", { level: userInfo.level, name: userInfo.name, templateId: userInfo.template_id });
+
+    let templateContent = null;
+
+    // Check if a template is specified
+    if (userInfo.template_id) {
+      try {
+        // Fetch template content from storage
+        const { data: templateData, error: templateError } = await supabaseClient
+          .from('system_templates')
+          .select('file_path')
+          .eq('id', userInfo.template_id)
+          .eq('is_active', true)
+          .single();
+
+        if (!templateError && templateData) {
+          const { data: fileData, error: fileError } = await supabaseClient.storage
+            .from('latex-templates')
+            .download(templateData.file_path);
+
+          if (!fileError && fileData) {
+            templateContent = await fileData.text();
+            logStep('Template loaded successfully', { templateId: userInfo.template_id, contentLength: templateContent.length });
+          }
+        }
+      } catch (error) {
+        logStep('Template loading failed, using default', { error: error.message });
+      }
+    }
 
     // Generate PDF directly using jsPDF
-    const pdfBuffer = generatePDF(userInfo);
+    const pdfBuffer = generatePDF(userInfo, templateContent);
     logStep("PDF generated", { bufferSize: pdfBuffer.byteLength });
 
     // Convert ArrayBuffer to base64 for download
@@ -267,8 +309,8 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       success: true,
-      download_url: dataUrl,
-      message: "PDF generated successfully"
+      downloadUrl: dataUrl,
+      message: templateContent ? "PDF generated with custom template" : "PDF generated successfully"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

@@ -11,6 +11,7 @@ import PlanSelection from './PlanSelection';
 import { generateLatexTemplate } from '@/utils/latexGenerator';
 import ProfileSettings from './ProfileSettings';
 import LevelSelectionModal from './LevelSelectionModal';
+import { AdminTemplateManager } from './AdminTemplateManager';
 
 interface UserProfile {
   full_name: string;
@@ -38,6 +39,7 @@ const Dashboard = () => {
   const [showPlans, setShowPlans] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showLevelModal, setShowLevelModal] = useState(false);
+  const [showAdminTemplates, setShowAdminTemplates] = useState(false);
   const [generatedLatex, setGeneratedLatex] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -94,7 +96,17 @@ const Dashboard = () => {
 
     setIsGenerating(true);
     try {
-      // Appeler l'edge function pour générer le PDF
+      // Find appropriate system template based on level
+      const { data: templateData } = await supabase
+        .from('system_templates')
+        .select('id')
+        .eq('is_active', true)
+        .eq('level_id', selectedLevel.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // Call the edge function to generate the PDF
       const { data, error } = await supabase.functions.invoke('generate-pdf', {
         body: {
           userInfo: {
@@ -103,17 +115,18 @@ const Dashboard = () => {
             school: profile.school_name || '',
             academic_year: profile.academic_year || '',
             level: selectedLevel.name_fr,
-            level_code: selectedLevel.name
+            level_code: selectedLevel.name,
+            template_id: templateData?.id || null
           }
         }
       });
 
       if (error) throw error;
 
-      if (data?.download_url) {
-        // Télécharger automatiquement le PDF
+      if (data?.downloadUrl) {
+        // Create download link with base64 data
         const link = document.createElement('a');
-        link.href = data.download_url;
+        link.href = data.downloadUrl;
         link.download = `math-planner-${selectedLevel.name}-${profile.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`;
         document.body.appendChild(link);
         link.click();
@@ -121,7 +134,9 @@ const Dashboard = () => {
 
         toast({
           title: "PDF Généré avec Succès!",
-          description: `Le document pour ${selectedLevel.name_fr} a été téléchargé.`,
+          description: templateData 
+            ? `Le document pour ${selectedLevel.name_fr} a été généré avec un template personnalisé.`
+            : `Le document pour ${selectedLevel.name_fr} a été téléchargé.`,
         });
       }
     } catch (error: any) {
@@ -161,6 +176,21 @@ const Dashboard = () => {
     );
   }
 
+  if (showAdminTemplates) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="mb-6">
+            <Button onClick={() => setShowAdminTemplates(false)} variant="outline">
+              ← Retour au tableau de bord
+            </Button>
+          </div>
+          <AdminTemplateManager />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
@@ -174,6 +204,10 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+            <Button onClick={() => setShowAdminTemplates(true)} variant="outline" className="flex items-center space-x-2 text-sm sm:text-base">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Gérer Templates</span>
+            </Button>
             <Button onClick={() => setShowProfile(true)} variant="outline" className="flex items-center space-x-2 text-sm sm:text-base">
               <User className="h-4 w-4" />
               <span className="hidden sm:inline">Mon Profil</span>

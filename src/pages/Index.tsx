@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { FileText, Download, Loader2, BookOpen } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { generateLatexTemplate } from "@/utils/latexGenerator";
-import { TemplateUpload } from "@/components/TemplateUpload";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UserInfo {
@@ -18,15 +17,6 @@ interface UserInfo {
   institution: string;
   level: string;
   chapter: string;
-}
-
-interface Template {
-  id: string;
-  name: string;
-  description: string;
-  file_path: string;
-  file_size: number;
-  created_at: string;
 }
 
 const Index = () => {
@@ -39,38 +29,9 @@ const Index = () => {
   });
   const [generatedLatex, setGeneratedLatex] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
 
   const handleInputChange = (field: keyof UserInfo, value: string) => {
     setUserInfo(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleTemplateSelect = async (template: Template) => {
-    setSelectedTemplate(template);
-    
-    try {
-      // Download the template content
-      const { data, error } = await supabase.storage
-        .from('latex-templates')
-        .download(template.file_path);
-
-      if (error) throw error;
-
-      const text = await data.text();
-      setGeneratedLatex(text);
-      
-      toast({
-        title: "Template Loaded",
-        description: `Template "${template.name}" loaded successfully. You can now modify it with your information.`,
-      });
-    } catch (error) {
-      console.error('Error loading template:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load template content",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleGenerateLatex = async () => {
@@ -91,35 +52,12 @@ const Index = () => {
       // Simulate processing time
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      let latex: string;
-      
-      if (selectedTemplate) {
-        // Use template as base and customize with user info
-        const { data, error } = await supabase.storage
-          .from('latex-templates')
-          .download(selectedTemplate.file_path);
-
-        if (error) throw error;
-        
-        const templateContent = await data.text();
-        
-        // Replace placeholders in template with user info
-        latex = templateContent
-          .replace(/\\author\{[^}]*\}/g, `\\author{${userInfo.name}}`)
-          .replace(/\\title\{[^}]*\}/g, `\\title{${userInfo.chapter}}`)
-          .replace(/\\date\{[^}]*\}/g, `\\date{${new Date().toLocaleDateString()}}`);
-      } else {
-        // Use default generator
-        latex = generateLatexTemplate(userInfo);
-      }
-      
+      const latex = generateLatexTemplate(userInfo);
       setGeneratedLatex(latex);
       
       toast({
         title: "LaTeX Generated Successfully",
-        description: selectedTemplate 
-          ? `Template "${selectedTemplate.name}" customized with your information!`
-          : "Your document is ready for download!",
+        description: "Your document is ready for download!",
       });
     } catch (error) {
       console.error("Error generating LaTeX:", error);
@@ -173,11 +111,7 @@ const Index = () => {
           </p>
         </div>
 
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-3 md:grid-cols-2 gap-8">
-          {/* Template Upload */}
-          <div className="lg:col-span-1">
-            <TemplateUpload onTemplateSelect={handleTemplateSelect} />
-          </div>
+        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
           {/* Input Form */}
           <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
             <CardHeader className="pb-6">
@@ -264,16 +198,10 @@ const Index = () => {
                 ) : (
                   <>
                     <FileText className="h-5 w-5 mr-2" />
-                    {selectedTemplate ? 'Customize Template' : 'Generate LaTeX Document'}
+                    Generate LaTeX Document
                   </>
                 )}
               </Button>
-              
-              {selectedTemplate && (
-                <div className="text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded p-2">
-                  Using template: <strong>{selectedTemplate.name}</strong>
-                </div>
-              )}
             </CardContent>
           </Card>
 
