@@ -3,15 +3,19 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, FileText, Download, LogOut, CreditCard, Star } from 'lucide-react';
+import { BookOpen, FileText, Download, LogOut, CreditCard, Star, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import PlanSelection from './PlanSelection';
 import { generateLatexTemplate } from '@/utils/latexGenerator';
+import ProfileSettings from './ProfileSettings';
 
 interface UserProfile {
   full_name: string;
+  school_name: string | null;
+  academic_year: string | null;
+  name_changes_count: number;
 }
 
 interface SubscriptionPlan {
@@ -31,6 +35,7 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [showPlans, setShowPlans] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [generatedLatex, setGeneratedLatex] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -45,7 +50,7 @@ const Dashboard = () => {
       // Fetch user profile
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('full_name')
+        .select('full_name, school_name, academic_year, name_changes_count')
         .eq('id', user?.id)
         .single();
       
@@ -142,6 +147,16 @@ const Dashboard = () => {
     return <PlanSelection onBack={() => setShowPlans(false)} onPlanSelected={fetchUserData} />;
   }
 
+  if (showProfile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+        <div className="container mx-auto px-4 py-8">
+          <ProfileSettings onClose={() => setShowProfile(false)} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       <div className="container mx-auto px-4 py-8">
@@ -154,10 +169,16 @@ const Dashboard = () => {
               <p className="text-gray-600">Tableau de bord personnel</p>
             </div>
           </div>
-          <Button onClick={handleSignOut} variant="outline" className="flex items-center space-x-2">
-            <LogOut className="h-4 w-4" />
-            <span>Déconnexion</span>
-          </Button>
+          <div className="flex items-center space-x-3">
+            <Button onClick={() => setShowProfile(true)} variant="outline" className="flex items-center space-x-2">
+              <User className="h-4 w-4" />
+              <span>Mon Profil</span>
+            </Button>
+            <Button onClick={handleSignOut} variant="outline" className="flex items-center space-x-2">
+              <LogOut className="h-4 w-4" />
+              <span>Déconnexion</span>
+            </Button>
+          </div>
         </div>
 
         {/* Welcome Section */}

@@ -43,6 +43,8 @@ const LandingPage = () => {
             title: "Inscription réussie!",
             description: "Vérifiez votre email pour confirmer votre compte.",
           });
+          // Rediriger vers la page de confirmation email
+          window.location.href = '/email-confirmation';
         }
       } else {
         const { error } = await signIn(email, password);

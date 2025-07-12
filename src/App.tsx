@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import LandingPage from "./components/LandingPage";
 import Dashboard from "./components/Dashboard";
+import EmailConfirmation from "./pages/EmailConfirmation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const AppRoutes = () => {
           <LandingPage />
         </PublicRoute>
       } />
+      <Route path="/email-confirmation" element={<EmailConfirmation />} />
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <Dashboard />
