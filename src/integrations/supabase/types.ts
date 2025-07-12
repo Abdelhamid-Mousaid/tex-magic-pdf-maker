@@ -40,21 +40,27 @@ export type Database = {
       }
       profiles: {
         Row: {
+          academic_year: string | null
           created_at: string
           full_name: string
           id: string
+          school_name: string | null
           updated_at: string
         }
         Insert: {
+          academic_year?: string | null
           created_at?: string
           full_name: string
           id: string
+          school_name?: string | null
           updated_at?: string
         }
         Update: {
+          academic_year?: string | null
           created_at?: string
           full_name?: string
           id?: string
+          school_name?: string | null
           updated_at?: string
         }
         Relationships: []
