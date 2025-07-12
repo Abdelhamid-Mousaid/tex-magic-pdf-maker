@@ -141,6 +141,21 @@ const Dashboard = () => {
       }
     } catch (error: any) {
       console.error("Error generating PDF:", error);
+      
+      // Check if it's an authentication error
+      if (error.message?.includes('Authentication') || 
+          error.message?.includes('Invalid Refresh Token') ||
+          error.message?.includes('session_not_found')) {
+        toast({
+          title: "Session Expirée",
+          description: "Votre session a expiré. Veuillez vous reconnecter.",
+          variant: "destructive"
+        });
+        // Force sign out to clean up invalid session
+        await signOut();
+        return;
+      }
+      
       toast({
         title: "Erreur de Génération",
         description: error.message || "Impossible de générer le document PDF.",
