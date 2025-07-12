@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, FileText, Trash2, Shield, Eye, EyeOff } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
 
 interface Level {
   id: string;
@@ -37,6 +36,7 @@ interface SystemTemplate {
 }
 
 export function AdminTemplateManager() {
+  console.log('AdminTemplateManager rendering...');
   const [uploading, setUploading] = useState(false);
   const [templates, setTemplates] = useState<SystemTemplate[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
@@ -348,16 +348,13 @@ export function AdminTemplateManager() {
                   </div>
                   
                   <div className="flex items-center gap-2 ml-4">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor={`active-${template.id}`} className="text-sm">
-                        Active
-                      </Label>
-                      <Switch
-                        id={`active-${template.id}`}
-                        checked={template.is_active}
-                        onCheckedChange={() => toggleTemplateStatus(template)}
-                      />
-                    </div>
+                    <Button
+                      variant={template.is_active ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleTemplateStatus(template)}
+                    >
+                      {template.is_active ? 'Actif' : 'Inactif'}
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
