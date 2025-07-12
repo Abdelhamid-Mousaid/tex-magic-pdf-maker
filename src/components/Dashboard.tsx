@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import PlanSelection from './PlanSelection';
 import { generateLatexTemplate } from '@/utils/latexGenerator';
 import ProfileSettings from './ProfileSettings';
+import LevelSelectionModal from './LevelSelectionModal';
 
 interface UserProfile {
   full_name: string;
@@ -36,6 +37,7 @@ const Dashboard = () => {
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [showPlans, setShowPlans] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showLevelModal, setShowLevelModal] = useState(false);
   const [generatedLatex, setGeneratedLatex] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -82,59 +84,60 @@ const Dashboard = () => {
     }
   };
 
-  const handleGenerateLatex = async () => {
-    if (!profile || !subscription) return;
+  const handleGenerateLatex = () => {
+    // Ouvrir le modal de sélection de niveau
+    setShowLevelModal(true);
+  };
+
+  const handleLevelSelected = async (selectedLevel: any) => {
+    if (!profile) return;
 
     setIsGenerating(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const userInfo = {
-        name: profile.full_name,
-        email: user?.email || '',
-        institution: 'Math Planner',
-        level: subscription.subscription_plans.name_fr,
-        chapter: `Contenu du ${subscription.subscription_plans.name_fr.toLowerCase()} - Mathématiques avancées avec formules et exercices pratiques.`
-      };
-      
-      const latex = generateLatexTemplate(userInfo);
-      setGeneratedLatex(latex);
-      
-      toast({
-        title: "Document Généré!",
-        description: "Votre document LaTeX est prêt à être téléchargé.",
+      // Appeler l'edge function pour générer le PDF
+      const { data, error } = await supabase.functions.invoke('generate-pdf', {
+        body: {
+          userInfo: {
+            name: profile.full_name,
+            email: user?.email || '',
+            school: profile.school_name || '',
+            academic_year: profile.academic_year || '',
+            level: selectedLevel.name_fr,
+            level_code: selectedLevel.name
+          }
+        }
       });
-    } catch (error) {
-      console.error("Error generating LaTeX:", error);
+
+      if (error) throw error;
+
+      if (data?.download_url) {
+        // Télécharger automatiquement le PDF
+        const link = document.createElement('a');
+        link.href = data.download_url;
+        link.download = `math-planner-${selectedLevel.name}-${profile.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        toast({
+          title: "PDF Généré avec Succès!",
+          description: `Le document pour ${selectedLevel.name_fr} a été téléchargé.`,
+        });
+      }
+    } catch (error: any) {
+      console.error("Error generating PDF:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de générer le document.",
+        title: "Erreur de Génération",
+        description: error.message || "Impossible de générer le document PDF.",
         variant: "destructive"
       });
     } finally {
       setIsGenerating(false);
+      setShowLevelModal(false);
     }
   };
 
-  const handleDownloadPdf = () => {
-    if (!generatedLatex) return;
-    
-    // Simuler la génération PDF avec XeLaTeX
-    const blob = new Blob([generatedLatex], { type: 'application/x-latex' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `math-planner-${profile?.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: "Téléchargement Démarré",
-      description: "Votre fichier PDF est en cours de téléchargement.",
-    });
-  };
+  // Supprimer l'ancienne fonction handleDownloadPdf car on télécharge maintenant directement
 
   const handleSignOut = async () => {
     await signOut();
@@ -231,7 +234,10 @@ const Dashboard = () => {
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-sm sm:text-base"
                   >
                     {isGenerating ? (
-                      'Génération en cours...'
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Génération en cours...
+                      </>
                     ) : (
                       <>
                         <FileText className="h-5 w-5 mr-2" />
@@ -239,17 +245,6 @@ const Dashboard = () => {
                       </>
                     )}
                   </Button>
-
-                  {generatedLatex && (
-                    <Button
-                      onClick={handleDownloadPdf}
-                      variant="outline"
-                      className="w-full border-blue-600 text-blue-600 hover:bg-blue-50 text-sm sm:text-base"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Télécharger le fichier .pdf
-                    </Button>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -303,6 +298,14 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Level Selection Modal */}
+      <LevelSelectionModal
+        isOpen={showLevelModal}
+        onClose={() => setShowLevelModal(false)}
+        onGenerate={handleLevelSelected}
+        loading={isGenerating}
+      />
     </div>
   );
 };
