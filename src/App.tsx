@@ -61,15 +61,15 @@ const AppRoutes = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider delayDuration={0}>
+    <TooltipProvider delayDuration={0}>
+      <AuthProvider>
         <BrowserRouter>
           <AppRoutes />
-          <Toaster />
-          <Sonner />
         </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+      </AuthProvider>
+      <Toaster />
+      <Sonner />
+    </TooltipProvider>
   </QueryClientProvider>
 );
 
