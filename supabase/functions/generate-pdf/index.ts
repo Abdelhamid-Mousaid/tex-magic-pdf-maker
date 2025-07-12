@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { encode as base64Encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -228,14 +229,31 @@ serve(async (req) => {
     logStep("Content generated", { contentLength: textContent.length });
 
     // Create a simple text file as download using Deno-compatible base64 encoding
-    const encoder = new TextEncoder();
-    const textBytes = encoder.encode(textContent);
+    let base64Content;
+    let dataUrl;
     
-    // Use Deno's native base64 encoding instead of btoa
-    const base64Content = btoa(textContent);
-    const dataUrl = `data:text/plain;base64,${base64Content}`;
-
-    logStep("Content generation completed", { dataUrlLength: dataUrl.length });
+    try {
+      logStep("Starting base64 encoding", { contentLength: textContent.length });
+      
+      // Use Deno's standard library for base64 encoding
+      const encoder = new TextEncoder();
+      const textBytes = encoder.encode(textContent);
+      base64Content = base64Encode(textBytes);
+      dataUrl = `data:text/plain;base64,${base64Content}`;
+      
+      logStep("Base64 encoding successful", { 
+        originalLength: textContent.length, 
+        encodedLength: base64Content.length,
+        dataUrlLength: dataUrl.length 
+      });
+    } catch (encodingError) {
+      logStep("Base64 encoding failed, using alternative approach", { error: encodingError.message });
+      
+      // Fallback: return content directly without base64 encoding
+      dataUrl = `data:text/plain;charset=utf-8,${encodeURIComponent(textContent)}`;
+      
+      logStep("Fallback encoding successful", { dataUrlLength: dataUrl.length });
+    }
 
     return new Response(JSON.stringify({ 
       success: true,
