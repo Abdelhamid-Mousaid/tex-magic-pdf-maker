@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 
 interface Level {
   id: string;
+  name: string;
   name_fr: string;
   order_index: number;
 }
@@ -153,45 +154,111 @@ const LevelSelection: React.FC<LevelSelectionProps> = ({ selectedPlan, onBack, o
             <p className="mt-4 text-gray-600">Chargement des niveaux...</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {levels.slice(0, 3).map((level) => (
-              <Card
-                key={level.id}
-                className={`shadow-lg border-2 transition-all duration-300 hover:shadow-xl hover:scale-105 ${getLevelColor(level.order_index)}`}
-              >
-                <CardHeader className="text-center pb-6">
-                  <div className="flex justify-center mb-4">
-                    <div className="p-4 rounded-full bg-white shadow-lg">
-                      {getLevelIcon(level.order_index)}
-                    </div>
-                  </div>
-                  
-                  <CardTitle className="text-2xl text-gray-900">{level.name_fr}</CardTitle>
-                  <CardDescription className="text-gray-600 mt-2">
-                    {level.order_index === 1 && "Parfait pour commencer votre apprentissage"}
-                    {level.order_index === 2 && "Idéal pour approfondir vos connaissances"}
-                    {level.order_index === 3 && "Pour les étudiants expérimentés"}
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="text-center text-sm text-gray-700">
-                      <p>✓ Contenu adapté à votre niveau</p>
-                      <p>✓ Exercices progressifs</p>
-                      <p>✓ Support personnalisé</p>
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={() => handleLevelSelect(level)}
-                    className={`w-full py-3 text-lg font-medium text-white ${getButtonColor(level.order_index)}`}
+          <div className="space-y-12">
+            {/* College Section */}
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">Niveau Collège</h2>
+              <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                {levels.filter(level => level.name.includes('APIC')).map((level) => (
+                  <Card
+                    key={level.id}
+                    className="shadow-lg border-2 transition-all duration-300 hover:shadow-xl hover:scale-105 bg-green-100 border-green-200 hover:bg-green-50"
                   >
-                    Choisir {level.name_fr}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+                    <CardHeader className="text-center pb-4">
+                      <div className="flex justify-center mb-3">
+                        <div className="p-3 rounded-full bg-white shadow-lg">
+                          <Users className="h-6 w-6 text-green-600" />
+                        </div>
+                      </div>
+                      
+                      <CardTitle className="text-lg text-gray-900">{level.name}</CardTitle>
+                      <CardDescription className="text-sm text-gray-600 mt-1">
+                        {level.name_fr}
+                      </CardDescription>
+                    </CardHeader>
+
+                    <CardContent className="space-y-3">
+                      <Button
+                        onClick={() => handleLevelSelect(level)}
+                        className="w-full py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+                      >
+                        Choisir ce niveau
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Tronc Commun Section */}
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">Tronc Commun</h2>
+              <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+                {levels.filter(level => level.name.includes('TC')).map((level) => (
+                  <Card
+                    key={level.id}
+                    className="shadow-lg border-2 transition-all duration-300 hover:shadow-xl hover:scale-105 bg-blue-100 border-blue-200 hover:bg-blue-50"
+                  >
+                    <CardHeader className="text-center pb-4">
+                      <div className="flex justify-center mb-3">
+                        <div className="p-3 rounded-full bg-white shadow-lg">
+                          <GraduationCap className="h-6 w-6 text-blue-600" />
+                        </div>
+                      </div>
+                      
+                      <CardTitle className="text-lg text-gray-900">{level.name}</CardTitle>
+                      <CardDescription className="text-sm text-gray-600 mt-1">
+                        {level.name_fr}
+                      </CardDescription>
+                    </CardHeader>
+
+                    <CardContent className="space-y-3">
+                      <Button
+                        onClick={() => handleLevelSelect(level)}
+                        className="w-full py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                      >
+                        Choisir ce niveau
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Baccalauréat Section */}
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">Baccalauréat</h2>
+              <div className="grid md:grid-cols-5 gap-4 max-w-6xl mx-auto">
+                {levels.filter(level => level.name.includes('BAC')).map((level) => (
+                  <Card
+                    key={level.id}
+                    className="shadow-lg border-2 transition-all duration-300 hover:shadow-xl hover:scale-105 bg-purple-100 border-purple-200 hover:bg-purple-50"
+                  >
+                    <CardHeader className="text-center pb-4">
+                      <div className="flex justify-center mb-3">
+                        <div className="p-3 rounded-full bg-white shadow-lg">
+                          <Award className="h-6 w-6 text-purple-600" />
+                        </div>
+                      </div>
+                      
+                      <CardTitle className="text-base text-gray-900">{level.name}</CardTitle>
+                      <CardDescription className="text-xs text-gray-600 mt-1">
+                        {level.name_fr.length > 30 ? level.name_fr.substring(0, 30) + '...' : level.name_fr}
+                      </CardDescription>
+                    </CardHeader>
+
+                    <CardContent className="space-y-3">
+                      <Button
+                        onClick={() => handleLevelSelect(level)}
+                        className="w-full py-2 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700"
+                      >
+                        Choisir
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 

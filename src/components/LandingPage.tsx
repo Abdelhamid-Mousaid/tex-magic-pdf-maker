@@ -71,8 +71,8 @@ const LandingPage = () => {
             <h1 className="text-5xl font-bold text-gray-900">Math Planner</h1>
           </div>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Générez automatiquement vos documents LaTeX professionnels pour vos cours de mathématiques. 
-            Parfait pour les étudiants et enseignants de tous niveaux.
+            Générez automatiquement vos documents LaTeX professionnels adaptés au système éducatif marocain. 
+            Spécialement conçu pour les professeurs de mathématiques du collège et lycée au Maroc.
           </p>
         </div>
 
@@ -85,8 +85,8 @@ const LandingPage = () => {
                   <FileText className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900">Documents Professionnels</h3>
-                  <p className="text-gray-600">Créez des documents LaTeX formatés selon les standards académiques</p>
+                  <h3 className="text-xl font-semibold text-gray-900">Système Éducatif Marocain</h3>
+                  <p className="text-gray-600">Documents adaptés aux programmes du collège et lycée marocain</p>
                 </div>
               </div>
               
@@ -95,8 +95,8 @@ const LandingPage = () => {
                   <Users className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900">Tous Niveaux</h3>
-                  <p className="text-gray-600">Débutant, Intermédiaire ou Avancé - nous avons ce qu'il vous faut</p>
+                  <h3 className="text-xl font-semibold text-gray-900">De la 1APIC au 2BAC</h3>
+                  <p className="text-gray-600">Tous les niveaux du système marocain : collège et lycée</p>
                 </div>
               </div>
               
@@ -106,7 +106,7 @@ const LandingPage = () => {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900">Plans Flexibles</h3>
-                  <p className="text-gray-600">Choisissez entre semestre, année complète ou accès gratuit</p>
+                  <p className="text-gray-600">Premier semestre, deuxième semestre ou année complète</p>
                 </div>
               </div>
             </div>
@@ -119,9 +119,9 @@ const LandingPage = () => {
                 ))}
               </div>
               <p className="text-gray-700 italic mb-3">
-                "Math Planner a révolutionné ma façon de préparer mes cours. Les documents générés sont impeccables!"
+                "Enfin un outil adapté au système marocain ! Math Planner m'aide énormément pour créer des documents professionnels pour mes classes de 2BAC."
               </p>
-              <p className="text-sm text-gray-600">- Sophie M., Professeure de Mathématiques</p>
+              <p className="text-sm text-gray-600">- Ahmed B., Professeur de Mathématiques, Casablanca</p>
             </div>
           </div>
 
