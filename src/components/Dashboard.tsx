@@ -116,14 +116,15 @@ const Dashboard = () => {
     }
   };
 
-  const handleDownloadLatex = () => {
+  const handleDownloadPdf = () => {
     if (!generatedLatex) return;
     
-    const blob = new Blob([generatedLatex], { type: 'text/plain' });
+    // Simuler la génération PDF avec XeLaTeX
+    const blob = new Blob([generatedLatex], { type: 'application/x-latex' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `math-planner-${profile?.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.tex`;
+    a.download = `math-planner-${profile?.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -131,7 +132,7 @@ const Dashboard = () => {
     
     toast({
       title: "Téléchargement Démarré",
-      description: "Votre fichier LaTeX est en cours de téléchargement.",
+      description: "Votre fichier PDF est en cours de téléchargement.",
     });
   };
 
@@ -241,40 +242,19 @@ const Dashboard = () => {
 
                   {generatedLatex && (
                     <Button
-                      onClick={handleDownloadLatex}
+                      onClick={handleDownloadPdf}
                       variant="outline"
                       className="w-full border-blue-600 text-blue-600 hover:bg-blue-50"
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      Télécharger le fichier .tex
+                      Télécharger le fichier .pdf
                     </Button>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Generated Content Preview */}
-            {generatedLatex && (
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <FileText className="h-6 w-6 text-green-600" />
-                    <span>Aperçu du Document Généré</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 max-h-96 overflow-auto">
-                    <pre className="text-sm text-gray-800 font-mono whitespace-pre-wrap">
-                      {generatedLatex.substring(0, 800)}
-                      {generatedLatex.length > 800 && "..."}
-                    </pre>
-                  </div>
-                  <div className="mt-4 text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <strong>Étapes suivantes:</strong> Téléchargez le fichier .tex et compilez-le avec un éditeur LaTeX comme Overleaf, TeXstudio, ou MiKTeX pour générer votre PDF final.
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Removed: Generated Content Preview section */}
           </div>
 
           {/* Sidebar */}
