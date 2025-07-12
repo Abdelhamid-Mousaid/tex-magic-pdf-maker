@@ -133,34 +133,67 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
+    // Validate environment variables
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error("Missing required environment variables: SUPABASE_URL or SUPABASE_ANON_KEY");
+    }
+
     // Create Supabase client for authentication
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-    );
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
     // Get user from authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
+      logStep("No authorization header provided");
       throw new Error("No authorization header provided");
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    logStep("Attempting authentication", { tokenLength: token.length });
     
-    const user = userData.user;
-    if (!user) throw new Error("User not authenticated");
-    
-    logStep("User authenticated", { userId: user.id, email: user.email });
-
-    // Parse request body
-    const { userInfo } = await req.json();
-    if (!userInfo) {
-      throw new Error("Missing userInfo in request body");
+    // More robust authentication handling
+    let user;
+    try {
+      const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+      if (userError) {
+        logStep("Authentication error", { error: userError.message });
+        throw new Error(`Authentication failed: ${userError.message}`);
+      }
+      
+      user = userData.user;
+      if (!user) {
+        logStep("User not found in token");
+        throw new Error("User not authenticated");
+      }
+      
+      logStep("User authenticated", { userId: user.id, email: user.email });
+    } catch (authError) {
+      logStep("Authentication exception", { error: authError.message });
+      throw new Error(`Authentication error: ${authError.message}`);
     }
 
-    logStep("User info received", { level: userInfo.level, name: userInfo.name, templateId: userInfo.template_id });
+    // Parse request body with better error handling
+    let userInfo;
+    try {
+      const body = await req.json();
+      userInfo = body.userInfo;
+      if (!userInfo) {
+        throw new Error("Missing userInfo in request body");
+      }
+    } catch (parseError) {
+      logStep("Request parsing error", { error: parseError.message });
+      throw new Error("Invalid request body format");
+    }
+
+    // Ensure required fields with defaults
+    userInfo.level = userInfo.level || "Non spécifié";
+    userInfo.name = userInfo.name || user.email || "Utilisateur";
+    userInfo.email = userInfo.email || user.email;
+
+    logStep("User info processed", { level: userInfo.level, name: userInfo.name, templateId: userInfo.template_id });
 
     let templateContent = null;
 
@@ -194,10 +227,12 @@ serve(async (req) => {
     const textContent = generatePDFContent(userInfo, templateContent);
     logStep("Content generated", { contentLength: textContent.length });
 
-    // Create a simple text file as download
+    // Create a simple text file as download using Deno-compatible base64 encoding
     const encoder = new TextEncoder();
     const textBytes = encoder.encode(textContent);
-    const base64Content = btoa(String.fromCharCode(...textBytes));
+    
+    // Use Deno's native base64 encoding instead of btoa
+    const base64Content = btoa(textContent);
     const dataUrl = `data:text/plain;base64,${base64Content}`;
 
     logStep("Content generation completed", { dataUrlLength: dataUrl.length });
@@ -206,7 +241,7 @@ serve(async (req) => {
       success: true,
       downloadUrl: dataUrl,
       content: textContent,
-      filename: `math-planner-${userInfo.level.replace(/\s+/g, '-')}-${Date.now()}.txt`,
+      filename: `math-planner-${(userInfo.level || 'niveau').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${Date.now()}.txt`,
       message: templateContent ? "Content generated with custom template" : "Content generated successfully"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
