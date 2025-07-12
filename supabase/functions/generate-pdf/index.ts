@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { encode as base64Encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { PDFDocument, rgb } from "https://cdn.skypack.dev/pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,116 +14,122 @@ const logStep = (step: string, details?: any) => {
   console.log(`[GENERATE-PDF] ${step}${detailsStr}`);
 };
 
-// Simple PDF generator without external dependencies
-const generatePDFContent = (userInfo: any, templateContent?: string | null): string => {
+// Generate actual PDF using pdf-lib
+const generatePDF = async (userInfo: any, templateContent?: string | null): Promise<Uint8Array> => {
   const currentDate = new Date().toLocaleDateString('fr-FR', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
 
-  // Create a simple PDF-like content structure
-  const content = `
-Math Planner - Planificateur Mathématiques
-==========================================
+  // Create a new PDF document
+  const pdfDoc = await PDFDocument.create();
+  
+  // Add a page to the document
+  const page = pdfDoc.addPage([595.28, 841.89]); // A4 size in points
+  
+  // Get the width and height of the page
+  const { width, height } = page.getSize();
+  
+  // Set up font and colors
+  const fontSize = 12;
+  const titleFontSize = 16;
+  const headerFontSize = 14;
+  
+  let yPosition = height - 50; // Start from top with margin
+  
+  // Helper function to add text with word wrapping
+  const addText = (text: string, size: number = fontSize, isTitle: boolean = false) => {
+    const lines = text.split('\n');
+    for (const line of lines) {
+      if (yPosition < 50) {
+        // Add new page if needed
+        const newPage = pdfDoc.addPage([595.28, 841.89]);
+        yPosition = newPage.getSize().height - 50;
+        newPage.drawText(line, {
+          x: 50,
+          y: yPosition,
+          size: size,
+          color: rgb(0, 0, 0),
+        });
+      } else {
+        page.drawText(line, {
+          x: 50,
+          y: yPosition,
+          size: size,
+          color: isTitle ? rgb(0, 0.2, 0.8) : rgb(0, 0, 0),
+        });
+      }
+      yPosition -= size + 4; // Line spacing
+    }
+    yPosition -= 10; // Extra spacing after paragraphs
+  };
 
-Informations de l'Enseignant:
-- Nom: ${userInfo.name}
-- Email: ${userInfo.email}
-- École: ${userInfo.school || 'Non spécifiée'}
-- Année Scolaire: ${userInfo.academic_year || 'Non spécifiée'}
-- Niveau: ${userInfo.level}
-- Code Niveau: ${userInfo.level_code || userInfo.level}
+  // Add title
+  addText('Math Planner - Planificateur Mathématiques', titleFontSize, true);
+  addText('='.repeat(50));
+  
+  // Add user information
+  addText('Informations de l\'Enseignant:', headerFontSize);
+  addText(`- Nom: ${userInfo.name}`);
+  addText(`- Email: ${userInfo.email}`);
+  addText(`- École: ${userInfo.school || 'Non spécifiée'}`);
+  addText(`- Année Scolaire: ${userInfo.academic_year || 'Non spécifiée'}`);
+  addText(`- Niveau: ${userInfo.level}`);
+  addText(`- Code Niveau: ${userInfo.level_code || userInfo.level}`);
+  addText('');
+  addText(`Date de génération: ${currentDate}`);
+  addText('');
 
-Date de génération: ${currentDate}
+  if (templateContent) {
+    addText('TEMPLATE PERSONNALISÉ UTILISÉ', headerFontSize);
+    addText('='.repeat(30));
+    addText(`Contenu du template:\n${templateContent.substring(0, 500)}...`);
+  } else {
+    addText(`Programme de Mathématiques - ${userInfo.level}`, headerFontSize);
+    addText('='.repeat(40));
+    addText('');
+    
+    addText('Objectifs Pédagogiques:', headerFontSize);
+    addText('1. Développer la capacité de raisonnement mathématique');
+    addText('2. Maîtriser les techniques de calcul');
+    addText('3. Résoudre des problèmes concrets');
+    addText('4. Développer l\'esprit d\'analyse et de synthèse');
+    addText('');
+    
+    addText('Contenu du Programme:', headerFontSize);
+    addText('');
+    addText('Chapitre 1: Nombres et Calculs');
+    addText('- Opérations sur les nombres réels');
+    addText('- Puissances et racines');
+    addText('- Calcul littéral');
+    addText('- Équations et inéquations');
+    addText('');
+    
+    addText('Chapitre 2: Géométrie');
+    addText('- Configurations géométriques');
+    addText('- Théorèmes de géométrie plane');
+    addText('- Transformations géométriques');
+    addText('- Calculs de périmètres, aires et volumes');
+    addText('');
+    
+    addText('Chapitre 3: Fonctions');
+    addText('- Notion de fonction');
+    addText('- Fonctions affines et linéaires');
+    addText('- Fonctions du second degré');
+    addText('- Représentations graphiques');
+  }
+  
+  // Add footer
+  addText('');
+  addText('='.repeat(50));
+  addText('Généré automatiquement par Math Planner');
+  addText('Outil professionnel de planification pédagogique');
+  addText('='.repeat(50));
 
-${templateContent ? 'TEMPLATE PERSONNALISÉ UTILISÉ' : 'TEMPLATE STANDARD'}
-${templateContent ? '==============================' : '================'}
-
-${templateContent ? `
-Contenu du template:
-${templateContent.substring(0, 500)}...
-` : `
-Programme de Mathématiques - ${userInfo.level}
-============================================
-
-Objectifs Pédagogiques:
-1. Développer la capacité de raisonnement mathématique
-2. Maîtriser les techniques de calcul
-3. Résoudre des problèmes concrets
-4. Développer l'esprit d'analyse et de synthèse
-
-Contenu du Programme:
-
-Chapitre 1: Nombres et Calculs
-- Opérations sur les nombres réels
-- Puissances et racines
-- Calcul littéral
-- Équations et inéquations
-
-Chapitre 2: Géométrie
-- Configurations géométriques
-- Théorèmes de géométrie plane
-- Transformations géométriques
-- Calculs de périmètres, aires et volumes
-
-Chapitre 3: Fonctions
-- Notion de fonction
-- Fonctions affines et linéaires
-- Fonctions du second degré
-- Représentations graphiques
-
-Exercices Types:
-
-Exercice 1: Calcul Numérique
-Calculer et simplifier:
-A = √50 + 2√8 - √32
-B = (3√12 - √27) / √3
-C = (2√3 + 1)² - 4√3
-
-Exercice 2: Équations
-Résoudre les équations suivantes:
-1. 2x + 5 = 3x - 7
-2. x² - 4x + 3 = 0
-3. √(2x + 1) = x - 2
-
-Exercice 3: Géométrie
-Dans un triangle ABC rectangle en A, AB = 6 cm et AC = 8 cm.
-1. Calculer BC
-2. Calculer l'aire du triangle ABC
-3. Calculer les angles aigus du triangle
-
-Évaluation et Contrôles:
-- Interrogations écrites (30% de la note)
-- Devoirs à la maison (20% de la note)
-- Participation en classe (10% de la note)
-- Contrôle semestriel (40% de la note)
-
-Progression Pédagogique:
-
-Premier Trimestre:
-1. Nombres et calculs (4 semaines)
-2. Introduction aux équations (3 semaines)
-3. Géométrie de base (4 semaines)
-
-Deuxième Trimestre:
-1. Fonctions linéaires (4 semaines)
-2. Systèmes d'équations (3 semaines)
-3. Géométrie dans l'espace (4 semaines)
-
-Troisième Trimestre:
-1. Statistiques (3 semaines)
-2. Probabilités (3 semaines)
-3. Révisions et approfondissements (4 semaines)
-`}
-
-==========================================
-Généré automatiquement par Math Planner
-Outil professionnel de planification pédagogique
-==========================================
-`;
-
-  return content;
+  // Serialize the PDFDocument to bytes (a Uint8Array)
+  const pdfBytes = await pdfDoc.save();
+  return pdfBytes;
 };
 
 serve(async (req) => {
@@ -224,43 +231,37 @@ serve(async (req) => {
       }
     }
 
-    // Generate text content
-    const textContent = generatePDFContent(userInfo, templateContent);
-    logStep("Content generated", { contentLength: textContent.length });
+    // Generate PDF content
+    logStep("Starting PDF generation");
+    const pdfBytes = await generatePDF(userInfo, templateContent);
+    logStep("PDF generated", { pdfSize: pdfBytes.length });
 
-    // Create a simple text file as download using Deno-compatible base64 encoding
+    // Create base64 encoded data URL for PDF download
     let base64Content;
     let dataUrl;
     
     try {
-      logStep("Starting base64 encoding", { contentLength: textContent.length });
+      logStep("Starting base64 encoding for PDF", { pdfSize: pdfBytes.length });
       
       // Use Deno's standard library for base64 encoding
-      const encoder = new TextEncoder();
-      const textBytes = encoder.encode(textContent);
-      base64Content = base64Encode(textBytes);
-      dataUrl = `data:text/plain;base64,${base64Content}`;
+      base64Content = base64Encode(pdfBytes);
+      dataUrl = `data:application/pdf;base64,${base64Content}`;
       
-      logStep("Base64 encoding successful", { 
-        originalLength: textContent.length, 
+      logStep("PDF base64 encoding successful", { 
+        originalSize: pdfBytes.length, 
         encodedLength: base64Content.length,
         dataUrlLength: dataUrl.length 
       });
     } catch (encodingError) {
-      logStep("Base64 encoding failed, using alternative approach", { error: encodingError.message });
-      
-      // Fallback: return content directly without base64 encoding
-      dataUrl = `data:text/plain;charset=utf-8,${encodeURIComponent(textContent)}`;
-      
-      logStep("Fallback encoding successful", { dataUrlLength: dataUrl.length });
+      logStep("PDF base64 encoding failed", { error: encodingError.message });
+      throw new Error(`Failed to encode PDF: ${encodingError.message}`);
     }
 
     return new Response(JSON.stringify({ 
       success: true,
       downloadUrl: dataUrl,
-      content: textContent,
-      filename: `math-planner-${(userInfo.level || 'niveau').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${Date.now()}.txt`,
-      message: templateContent ? "Content generated with custom template" : "Content generated successfully"
+      filename: `math-planner-${(userInfo.level || 'niveau').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${Date.now()}.pdf`,
+      message: templateContent ? "PDF generated with custom template" : "PDF generated successfully"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
