@@ -11,7 +11,7 @@ import PlanSelection from './PlanSelection';
 import { generateLatexTemplate } from '@/utils/latexGenerator';
 import ProfileSettings from './ProfileSettings';
 import LevelSelectionModal from './LevelSelectionModal';
-import { AdminTemplateManager } from './AdminTemplateManager';
+
 
 interface UserProfile {
   full_name: string;
@@ -39,7 +39,7 @@ const Dashboard = () => {
   const [showPlans, setShowPlans] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showLevelModal, setShowLevelModal] = useState(false);
-  const [showAdminTemplates, setShowAdminTemplates] = useState(false);
+  
   const [generatedLatex, setGeneratedLatex] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -191,21 +191,6 @@ const Dashboard = () => {
     );
   }
 
-  if (showAdminTemplates) {
-    console.log('Showing admin templates...');
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="mb-6">
-            <Button onClick={() => setShowAdminTemplates(false)} variant="outline">
-              ← Retour au tableau de bord
-            </Button>
-          </div>
-          <AdminTemplateManager />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -220,10 +205,6 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
-            <Button onClick={() => setShowAdminTemplates(true)} variant="outline" className="flex items-center space-x-2 text-sm sm:text-base">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Gérer Templates</span>
-            </Button>
             <Button onClick={() => setShowProfile(true)} variant="outline" className="flex items-center space-x-2 text-sm sm:text-base">
               <User className="h-4 w-4" />
               <span className="hidden sm:inline">Mon Profil</span>
