@@ -94,17 +94,23 @@ const Dashboard = () => {
 
     setIsGenerating(true);
     try {
-      // Find appropriate system template based on level
-      const { data: templateData } = await supabase
-        .from('system_templates')
-        .select('id')
-        .eq('is_active', true)
-        .eq('level_id', selectedLevel.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Generate AI-powered LaTeX template
+      const { data: aiData, error: aiError } = await supabase.functions.invoke('generate-ai-latex', {
+        body: {
+          level: selectedLevel.name_fr,
+          chapter: "1", // Default chapter
+          subject: "mathématiques",
+          language: "fr"
+        }
+      });
 
-      // Call the edge function to generate the PDF
+      if (aiError) throw aiError;
+
+      if (!aiData?.success) {
+        throw new Error(aiData?.error || 'Failed to generate LaTeX template');
+      }
+
+      // Call the edge function to generate the PDF with AI-generated content
       const { data, error } = await supabase.functions.invoke('generate-pdf', {
         body: {
           userInfo: {
@@ -114,8 +120,9 @@ const Dashboard = () => {
             academic_year: profile.academic_year || '',
             level: selectedLevel.name_fr,
             level_code: selectedLevel.name,
-            template_id: templateData?.id || null
-          }
+            template_id: null // Using AI-generated content instead
+          },
+          customLatexContent: aiData.latexContent
         }
       });
 
@@ -125,20 +132,18 @@ const Dashboard = () => {
         // Create download link with base64 data
         const link = document.createElement('a');
         link.href = data.downloadUrl;
-        link.download = `math-planner-${selectedLevel.name}-${profile.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`;
+        link.download = `math-planner-ai-${selectedLevel.name}-${profile.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
 
         toast({
-          title: "PDF Généré avec Succès!",
-          description: templateData 
-            ? `Le document pour ${selectedLevel.name_fr} a été généré avec un template personnalisé.`
-            : `Le document pour ${selectedLevel.name_fr} a été téléchargé.`,
+          title: "PDF Généré avec IA!",
+          description: `Un document personnalisé pour ${selectedLevel.name_fr} a été généré avec l'intelligence artificielle.`,
         });
       }
     } catch (error: any) {
-      console.error("Error generating PDF:", error);
+      console.error("Error generating AI PDF:", error);
       
       // Check if it's an authentication error
       if (error.message?.includes('Authentication') || 
@@ -155,8 +160,8 @@ const Dashboard = () => {
       }
       
       toast({
-        title: "Erreur de Génération",
-        description: error.message || "Impossible de générer le document PDF.",
+        title: "Erreur de Génération IA",
+        description: error.message || "Impossible de générer le document avec l'IA.",
         variant: "destructive"
       });
     } finally {

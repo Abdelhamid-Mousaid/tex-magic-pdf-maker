@@ -90,9 +90,28 @@ const generatePDF = async (userInfo: any, templateContent?: string | null): Prom
   addText('');
 
   if (templateContent) {
-    addText('TEMPLATE PERSONNALISÉ UTILISÉ', headerFontSize);
-    addText('='.repeat(30));
-    addText(`Contenu du template:\n${templateContent.substring(0, 500)}...`);
+    if (templateContent.includes('\\documentclass')) {
+      // This is AI-generated LaTeX content
+      addText('CONTENU GÉNÉRÉ PAR IA', headerFontSize);
+      addText('='.repeat(30));
+      addText('Ce document a été créé avec l\'intelligence artificielle');
+      addText('');
+      
+      // Extract and display meaningful content from LaTeX
+      const cleanContent = templateContent
+        .replace(/\\[a-zA-Z]+(\[[^\]]*\])?(\{[^}]*\})?/g, '') // Remove LaTeX commands
+        .replace(/[{}]/g, '') // Remove braces
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .trim();
+      
+      addText('Aperçu du contenu généré:', headerFontSize);
+      addText(cleanContent.substring(0, 800) + (cleanContent.length > 800 ? '...' : ''));
+    } else {
+      // This is a regular template
+      addText('TEMPLATE PERSONNALISÉ UTILISÉ', headerFontSize);
+      addText('='.repeat(30));
+      addText(`Contenu du template:\n${templateContent.substring(0, 500)}...`);
+    }
   } else {
     addText(`Programme de Mathématiques - ${userInfo.level}`, headerFontSize);
     addText('='.repeat(40));
@@ -193,9 +212,11 @@ serve(async (req) => {
 
     // Parse request body with better error handling
     let userInfo;
+    let customLatexContent = null;
     try {
       const body = await req.json();
       userInfo = body.userInfo;
+      customLatexContent = body.customLatexContent;
       if (!userInfo) {
         throw new Error("Missing userInfo in request body");
       }
@@ -237,6 +258,12 @@ serve(async (req) => {
       } catch (error) {
         logStep('Template loading failed, using default', { error: error.message });
       }
+    }
+
+    // Use custom AI-generated LaTeX content if provided
+    if (customLatexContent) {
+      templateContent = customLatexContent;
+      logStep('Using AI-generated LaTeX content', { contentLength: customLatexContent.length });
     }
 
     // Generate PDF content
