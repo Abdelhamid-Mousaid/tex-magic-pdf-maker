@@ -1,14 +1,20 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { encode as base64Encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-interface UserInfo {
-  name: string;
-  email: string;
-  school?: string;
-  academic_year?: string;
-  level: string;
-  level_code?: string;
-}
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
-export const generateXeLaTeXTemplate = (userInfo: UserInfo): string => {
+// Helper logging function for debugging
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[GENERATE-LATEX] ${step}${detailsStr}`);
+};
+
+// Generate XeLaTeX content
+const generateXeLaTeXContent = (userInfo: any): string => {
   const currentDate = new Date().toLocaleDateString('fr-FR', {
     year: 'numeric',
     month: 'long',
@@ -26,25 +32,25 @@ export const generateXeLaTeXTemplate = (userInfo: UserInfo): string => {
 \\setdefaultlanguage{french}
 \\setotherlanguage{english}
 
-% Polices modernes et élégantes
-\\setmainfont{Libertinus Serif}[
-  UprightFont = *-Regular,
-  BoldFont = *-Bold,
-  ItalicFont = *-Italic,
-  BoldItalicFont = *-BoldItalic
+% Polices modernes et élégantes (fallback vers des polices système courantes)
+\\setmainfont{Times New Roman}[
+  UprightFont = *,
+  BoldFont = * Bold,
+  ItalicFont = * Italic,
+  BoldItalicFont = * Bold Italic
 ]
-\\setsansfont{Libertinus Sans}[
-  UprightFont = *-Regular,
-  BoldFont = *-Bold,
-  ItalicFont = *-Italic
+\\setsansfont{Arial}[
+  UprightFont = *,
+  BoldFont = * Bold,
+  ItalicFont = * Italic
 ]
-\\setmonofont{Fira Code}[Scale=0.9]
+\\setmonofont{Courier New}[Scale=0.9]
 
 % Packages mathématiques et graphiques
 \\usepackage{amsmath, amssymb, amsthm}
 \\usepackage{mathtools}
 \\usepackage{unicode-math}
-\\setmathfont{Libertinus Math}
+\\setmathfont{Latin Modern Math}
 
 % Configuration de la page et mise en forme
 \\usepackage[margin=2.5cm, top=3cm, bottom=3cm]{geometry}
@@ -246,7 +252,7 @@ Le programme de \\textbf{${userInfo.level}} s'articule autour de plusieurs domai
 
 \\section{Ressources et Outils}
 
-\\formulabox{
+\\begin{formulabox}
 \\textbf{Formules Fondamentales à Retenir :}
 
 \\begin{align}
@@ -255,11 +261,11 @@ Le programme de \\textbf{${userInfo.level}} s'articule autour de plusieurs domai
 \\text{Primitive d'un polynôme : } & \\int x^n dx = \\frac{x^{n+1}}{n+1} + C \\\\
 \\text{Identité remarquable : } & (a+b)^2 = a^2 + 2ab + b^2
 \\end{align}
-}
+\\end{formulabox}
 
 \\section{Activités et Évaluations}
 
-\\exercisebox{
+\\begin{exercisebox}
 \\textbf{Types d'Exercices Recommandés :}
 
 \\begin{enumerate}
@@ -276,7 +282,7 @@ Le programme de \\textbf{${userInfo.level}} s'articule autour de plusieurs domai
   \\item Exposés et présentations
   \\item Projets interdisciplinaires
 \\end{itemize}
-}
+\\end{exercisebox}
 
 \\section{Planification Temporelle}
 
@@ -334,3 +340,127 @@ La progression des élèves sera suivie grâce à :
 
 \\end{document}`;
 };
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    logStep("LaTeX generation function started");
+
+    // Validate environment variables
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error("Missing required environment variables: SUPABASE_URL or SUPABASE_ANON_KEY");
+    }
+
+    // Create Supabase client for authentication
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+
+    // Get user from authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      logStep("No authorization header provided");
+      throw new Error("No authorization header provided");
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    logStep("Attempting authentication", { tokenLength: token.length });
+    
+    // More robust authentication handling
+    let user;
+    try {
+      const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+      if (userError) {
+        logStep("Authentication error", { error: userError.message });
+        throw new Error(`Authentication failed: ${userError.message}`);
+      }
+      
+      user = userData.user;
+      if (!user) {
+        logStep("User not found in token");
+        throw new Error("User not authenticated");
+      }
+      
+      logStep("User authenticated", { userId: user.id, email: user.email });
+    } catch (authError) {
+      logStep("Authentication exception", { error: authError.message });
+      throw new Error(`Authentication error: ${authError.message}`);
+    }
+
+    // Parse request body with better error handling
+    let userInfo;
+    try {
+      const body = await req.json();
+      userInfo = body.userInfo;
+      if (!userInfo) {
+        throw new Error("Missing userInfo in request body");
+      }
+    } catch (parseError) {
+      logStep("Request parsing error", { error: parseError.message });
+      throw new Error("Invalid request body format");
+    }
+
+    // Ensure required fields with defaults
+    userInfo.level = userInfo.level || "Non spécifié";
+    userInfo.name = userInfo.name || user.email || "Utilisateur";
+    userInfo.email = userInfo.email || user.email;
+
+    logStep("User info processed", { level: userInfo.level, name: userInfo.name });
+
+    // Generate LaTeX content
+    logStep("Starting LaTeX generation");
+    const latexContent = generateXeLaTeXContent(userInfo);
+    logStep("LaTeX generated", { contentLength: latexContent.length });
+
+    // Create base64 encoded data URL for LaTeX download
+    let base64Content;
+    let dataUrl;
+    
+    try {
+      logStep("Starting base64 encoding for LaTeX", { contentLength: latexContent.length });
+      
+      // Encode the LaTeX content as UTF-8 bytes first
+      const utf8Bytes = new TextEncoder().encode(latexContent);
+      
+      // Use Deno's standard library for base64 encoding
+      base64Content = base64Encode(utf8Bytes);
+      dataUrl = `data:text/plain;charset=utf-8;base64,${base64Content}`;
+      
+      logStep("LaTeX base64 encoding successful", { 
+        originalSize: latexContent.length, 
+        encodedLength: base64Content.length,
+        dataUrlLength: dataUrl.length 
+      });
+    } catch (encodingError) {
+      logStep("LaTeX base64 encoding failed", { error: encodingError.message });
+      throw new Error(`Failed to encode LaTeX: ${encodingError.message}`);
+    }
+
+    return new Response(JSON.stringify({ 
+      success: true,
+      downloadUrl: dataUrl,
+      filename: `math-planner-${(userInfo.level || 'niveau').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${Date.now()}.tex`,
+      message: "LaTeX source generated successfully for XeLaTeX compilation",
+      compileInstructions: "To compile this document, use: xelatex filename.tex"
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
+
+  } catch (error: any) {
+    logStep("ERROR", { message: error.message });
+    
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      success: false 
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+});

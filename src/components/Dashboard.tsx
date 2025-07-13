@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import PlanSelection from './PlanSelection';
-import { generateLatexTemplate } from '@/utils/latexGenerator';
+import { generateXeLaTeXTemplate } from '@/utils/latexGenerator';
 import ProfileSettings from './ProfileSettings';
 import LevelSelectionModal from './LevelSelectionModal';
 
@@ -39,7 +39,7 @@ const Dashboard = () => {
   const [showPlans, setShowPlans] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showLevelModal, setShowLevelModal] = useState(false);
-  
+  const [generationMode, setGenerationMode] = useState<'pdf' | 'latex'>('pdf');
   const [generatedLatex, setGeneratedLatex] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -87,12 +87,16 @@ const Dashboard = () => {
   };
 
   const handleGenerateLatex = () => {
-    // Ouvrir le modal de sélection de niveau
+    setGenerationMode('pdf');
     setShowLevelModal(true);
   };
 
   const handleLevelSelected = async (selectedLevel: any) => {
     if (!profile) return;
+
+    if (generationMode === 'latex') {
+      return handleLatexLevelSelected(selectedLevel);
+    }
 
     setIsGenerating(true);
     try {
@@ -159,6 +163,60 @@ const Dashboard = () => {
       toast({
         title: "Erreur de Génération",
         description: error.message || "Impossible de générer le document PDF.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+      setShowLevelModal(false);
+    }
+  };
+
+  const handleDownloadLatex = () => {
+    setGenerationMode('latex');
+    setShowLevelModal(true);
+  };
+
+  const handleLatexLevelSelected = async (selectedLevel: any) => {
+    if (!profile) return;
+
+    setIsGenerating(true);
+    try {
+      // Call the new edge function to generate LaTeX source
+      const { data, error } = await supabase.functions.invoke('generate-latex', {
+        body: {
+          userInfo: {
+            name: profile.full_name,
+            email: user?.email || '',
+            school: profile.school_name || '',
+            academic_year: profile.academic_year || '',
+            level: selectedLevel.name_fr,
+            level_code: selectedLevel.name
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.downloadUrl) {
+        // Create download link with base64 data
+        const link = document.createElement('a');
+        link.href = data.downloadUrl;
+        link.download = `${data.filename || 'math-planner-latex.tex'}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        toast({
+          title: "LaTeX Généré avec Succès!",
+          description: `Le fichier LaTeX pour ${selectedLevel.name_fr} est prêt. Compilez-le avec XeLaTeX pour obtenir un PDF professionnel.`,
+        });
+      }
+    } catch (error: any) {
+      console.error("Error generating LaTeX:", error);
+      
+      toast({
+        title: "Erreur de Génération",
+        description: error.message || "Impossible de générer le document LaTeX.",
         variant: "destructive"
       });
     } finally {
@@ -259,23 +317,43 @@ const Dashboard = () => {
                     </Badge>
                   </div>
                   
-                  <Button
-                    onClick={handleGenerateLatex}
-                    disabled={isGenerating}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-sm sm:text-base"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Génération en cours...
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="h-5 w-5 mr-2" />
-                        Générer un Document PDF
-                      </>
-                    )}
-                  </Button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Button
+                      onClick={handleGenerateLatex}
+                      disabled={isGenerating}
+                      className="bg-blue-600 hover:bg-blue-700 text-white py-3 text-sm sm:text-base"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Génération...
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="h-5 w-5 mr-2" />
+                          PDF
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={handleDownloadLatex}
+                      disabled={isGenerating}
+                      variant="outline"
+                      className="border-purple-600 text-purple-600 hover:bg-purple-50 py-3 text-sm sm:text-base"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600 mr-2"></div>
+                          Génération...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-5 w-5 mr-2" />
+                          LaTeX
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

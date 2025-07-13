@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, Download, Loader2, BookOpen } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { generateLatexTemplate } from "@/utils/latexGenerator";
+import { generateXeLaTeXTemplate } from "@/utils/latexGenerator";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UserInfo {
@@ -52,7 +52,7 @@ const Index = () => {
       // Simulate processing time
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const latex = generateLatexTemplate(userInfo);
+      const latex = generateXeLaTeXTemplate(userInfo);
       setGeneratedLatex(latex);
       
       toast({
