@@ -26,43 +26,51 @@ const generatePDF = async (userInfo: any, templateContent?: string | null): Prom
   const pdfDoc = await PDFDocument.create();
   
   // Add a page to the document
-  const page = pdfDoc.addPage([595.28, 841.89]); // A4 size in points
+  let currentPage = pdfDoc.addPage([595.28, 841.89]); // A4 size in points
   
   // Get the width and height of the page
-  const { width, height } = page.getSize();
+  const { width, height } = currentPage.getSize();
   
   // Set up font and colors
   const fontSize = 12;
-  const titleFontSize = 16;
+  const titleFontSize = 18;
   const headerFontSize = 14;
+  const lineHeight = fontSize + 4;
+  const margin = 50;
   
-  let yPosition = height - 50; // Start from top with margin
+  let yPosition = height - margin; // Start from top with margin
   
-  // Helper function to add text with word wrapping
-  const addText = (text: string, size: number = fontSize, isTitle: boolean = false) => {
+  // Helper function to add text with proper spacing and page breaks
+  const addText = (text: string, size: number = fontSize, isTitle: boolean = false, isHeader: boolean = false) => {
     const lines = text.split('\n');
+    
     for (const line of lines) {
-      if (yPosition < 50) {
-        // Add new page if needed
-        const newPage = pdfDoc.addPage([595.28, 841.89]);
-        yPosition = newPage.getSize().height - 50;
-        newPage.drawText(line, {
-          x: 50,
-          y: yPosition,
-          size: size,
-          color: rgb(0, 0, 0),
-        });
-      } else {
-        page.drawText(line, {
-          x: 50,
-          y: yPosition,
-          size: size,
-          color: isTitle ? rgb(0, 0.2, 0.8) : rgb(0, 0, 0),
-        });
+      // Check if we need a new page
+      if (yPosition < margin + size) {
+        currentPage = pdfDoc.addPage([595.28, 841.89]);
+        yPosition = height - margin;
       }
-      yPosition -= size + 4; // Line spacing
+      
+      // Draw the text on current page
+      currentPage.drawText(line || ' ', {
+        x: margin,
+        y: yPosition,
+        size: size,
+        color: isTitle ? rgb(0, 0.2, 0.8) : rgb(0, 0, 0),
+      });
+      
+      // Move down for next line
+      yPosition -= (size + 6);
     }
-    yPosition -= 10; // Extra spacing after paragraphs
+    
+    // Add extra spacing after paragraphs
+    if (isHeader) {
+      yPosition -= 10;
+    } else if (isTitle) {
+      yPosition -= 15;
+    } else {
+      yPosition -= 5;
+    }
   };
 
   // Add title
