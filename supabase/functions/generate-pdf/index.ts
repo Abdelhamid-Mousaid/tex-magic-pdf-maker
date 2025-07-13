@@ -91,21 +91,77 @@ const generatePDF = async (userInfo: any, templateContent?: string | null): Prom
 
   if (templateContent) {
     if (templateContent.includes('\\documentclass')) {
-      // This is AI-generated LaTeX content
+      // This is AI-generated LaTeX content - extract meaningful content
       addText('CONTENU GÉNÉRÉ PAR IA', headerFontSize);
       addText('='.repeat(30));
-      addText('Ce document a été créé avec l\'intelligence artificielle');
+      addText('Ce document a été créé avec l\'intelligence artificielle Gemini');
       addText('');
       
-      // Extract and display meaningful content from LaTeX
-      const cleanContent = templateContent
-        .replace(/\\[a-zA-Z]+(\[[^\]]*\])?(\{[^}]*\})?/g, '') // Remove LaTeX commands
-        .replace(/[{}]/g, '') // Remove braces
+      // Better LaTeX content extraction
+      let cleanContent = templateContent;
+      
+      // Remove document class and packages
+      cleanContent = cleanContent.replace(/\\documentclass\[.*?\]\{.*?\}/g, '');
+      cleanContent = cleanContent.replace(/\\usepackage\[.*?\]\{.*?\}/g, '');
+      cleanContent = cleanContent.replace(/\\usepackage\{.*?\}/g, '');
+      
+      // Remove begin/end document
+      cleanContent = cleanContent.replace(/\\begin\{document\}/g, '');
+      cleanContent = cleanContent.replace(/\\end\{document\}/g, '');
+      
+      // Extract sections and subsections
+      const sections = cleanContent.match(/\\section\{([^}]+)\}/g);
+      const subsections = cleanContent.match(/\\subsection\{([^}]+)\}/g);
+      
+      if (sections && sections.length > 0) {
+        addText('Structure du document:', headerFontSize);
+        sections.forEach((section, index) => {
+          const title = section.replace(/\\section\{([^}]+)\}/, '$1');
+          addText(`${index + 1}. ${title}`);
+        });
+        addText('');
+      }
+      
+      if (subsections && subsections.length > 0) {
+        addText('Sous-sections:', headerFontSize);
+        subsections.forEach((subsection, index) => {
+          const title = subsection.replace(/\\subsection\{([^}]+)\}/, '$1');
+          addText(`  • ${title}`);
+        });
+        addText('');
+      }
+      
+      // Extract text content between LaTeX commands
+      let textContent = cleanContent
+        .replace(/\\[a-zA-Z]+\*?(\[[^\]]*\])?(\{[^}]*\})?/g, ' ') // Remove LaTeX commands
+        .replace(/\{[^}]*\}/g, ' ') // Remove remaining braces
+        .replace(/\[[^\]]*\]/g, ' ') // Remove brackets
         .replace(/\s+/g, ' ') // Normalize whitespace
         .trim();
       
-      addText('Aperçu du contenu généré:', headerFontSize);
-      addText(cleanContent.substring(0, 800) + (cleanContent.length > 800 ? '...' : ''));
+      // Remove common LaTeX artifacts
+      textContent = textContent
+        .replace(/geometry margin/g, '')
+        .replace(/utf8 inputenc/g, '')
+        .replace(/T1 fontenc/g, '')
+        .replace(/french babel/g, '')
+        .replace(/amsmath amssymb/g, '')
+        .replace(/\b(cm|mm|pt|em|ex)\b/g, '')
+        .trim();
+      
+      if (textContent && textContent.length > 50) {
+        addText('Contenu extrait du document:', headerFontSize);
+        // Split into sentences and display cleanly
+        const sentences = textContent.split(/[.!?]+/).filter(s => s.trim().length > 10);
+        sentences.slice(0, 10).forEach(sentence => {
+          if (sentence.trim()) {
+            addText(`• ${sentence.trim()}.`);
+          }
+        });
+      } else {
+        addText('Template LaTeX généré avec succès pour votre niveau.', headerFontSize);
+        addText('Le contenu a été personnalisé selon vos besoins académiques.');
+      }
     } else {
       // This is a regular template
       addText('TEMPLATE PERSONNALISÉ UTILISÉ', headerFontSize);
