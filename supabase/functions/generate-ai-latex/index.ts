@@ -19,16 +19,23 @@ serve(async (req) => {
   }
 
   try {
+    console.log('AI LaTeX generation function called')
+    
     const { level, chapter, subject, language }: GenerateLatexRequest = await req.json()
+    console.log('Request parameters:', { level, chapter, subject, language })
 
     if (!level || !chapter) {
+      console.error('Missing required parameters:', { level, chapter })
       throw new Error('Level and chapter are required')
     }
 
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
     if (!geminiApiKey) {
+      console.error('Gemini API key not found in environment')
       throw new Error('Gemini API key not configured')
     }
+    
+    console.log('Gemini API key found, proceeding with generation')
 
     // Create a detailed prompt for LaTeX generation
     const prompt = language === 'fr' 
@@ -53,6 +60,7 @@ serve(async (req) => {
          
          Return only the LaTeX code without explanation.`
 
+    console.log('Calling Gemini API...')
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
@@ -73,19 +81,24 @@ serve(async (req) => {
       })
     })
 
+    console.log('Gemini API response status:', response.status)
+    
     if (!response.ok) {
       const errorData = await response.text()
       console.error('Gemini API error:', errorData)
-      throw new Error('Failed to generate LaTeX template')
+      throw new Error(`Gemini API error (${response.status}): ${errorData}`)
     }
 
     const data = await response.json()
+    console.log('Gemini API response received')
     
     if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+      console.error('Invalid Gemini API response structure:', data)
       throw new Error('Invalid response from Gemini API')
     }
 
     let latexContent = data.candidates[0].content.parts[0].text
+    console.log('LaTeX content generated, length:', latexContent.length)
 
     // Clean up the response - remove any markdown formatting
     latexContent = latexContent.replace(/```latex/g, '').replace(/```/g, '').trim()
@@ -107,6 +120,7 @@ ${latexContent}`
       latexContent += '\n\\end{document}'
     }
 
+    console.log('Returning successful response')
     return new Response(
       JSON.stringify({ 
         latexContent,
@@ -114,13 +128,16 @@ ${latexContent}`
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
       }
     )
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in generate-ai-latex function:', error)
+    console.error('Error stack:', error.stack)
+    
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: error.message || 'Unknown error occurred',
         success: false 
       }),
       {
