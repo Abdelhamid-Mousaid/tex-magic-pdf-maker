@@ -11,6 +11,7 @@ import PlanSelection from './PlanSelection';
 import { generateXeLaTeXTemplate } from '@/utils/latexGenerator';
 import ProfileSettings from './ProfileSettings';
 import LevelSelectionModal from './LevelSelectionModal';
+import { AILatexGenerator } from './AILatexGenerator';
 
 
 interface UserProfile {
@@ -39,6 +40,7 @@ const Dashboard = () => {
   const [showPlans, setShowPlans] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showLevelModal, setShowLevelModal] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState<any>(null);
   const [generatedLatex, setGeneratedLatex] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -89,27 +91,16 @@ const Dashboard = () => {
     setShowLevelModal(true);
   };
 
-  const handleLevelSelected = async (selectedLevel: any) => {
-    if (!profile) return;
+  const handleLevelSelected = (selectedLevel: any) => {
+    setSelectedLevel(selectedLevel);
+    setShowLevelModal(false);
+  };
+
+  const handleLatexGenerated = async (latexContent: string) => {
+    if (!profile || !selectedLevel) return;
 
     setIsGenerating(true);
     try {
-      // Generate AI-powered LaTeX template
-      const { data: aiData, error: aiError } = await supabase.functions.invoke('generate-ai-latex', {
-        body: {
-          level: selectedLevel.name_fr,
-          chapter: "1", // Default chapter
-          subject: "mathématiques",
-          language: "fr"
-        }
-      });
-
-      if (aiError) throw aiError;
-
-      if (!aiData?.success) {
-        throw new Error(aiData?.error || 'Failed to generate LaTeX template');
-      }
-
       // Call the edge function to generate the PDF with AI-generated content
       const { data, error } = await supabase.functions.invoke('generate-pdf', {
         body: {
@@ -122,7 +113,7 @@ const Dashboard = () => {
             level_code: selectedLevel.name,
             template_id: null // Using AI-generated content instead
           },
-          customLatexContent: aiData.latexContent
+          customLatexContent: latexContent
         }
       });
 
@@ -166,7 +157,7 @@ const Dashboard = () => {
       });
     } finally {
       setIsGenerating(false);
-      setShowLevelModal(false);
+      setSelectedLevel(null);
     }
   };
 
@@ -284,7 +275,14 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Removed: Generated Content Preview section */}
+            {/* AI LaTeX Generator */}
+            {selectedLevel && profile && (
+              <AILatexGenerator
+                userProfile={profile}
+                selectedLevel={selectedLevel}
+                onLatexGenerated={handleLatexGenerated}
+              />
+            )}
           </div>
 
           {/* Sidebar */}
