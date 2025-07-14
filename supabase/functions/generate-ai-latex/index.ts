@@ -21,21 +21,33 @@ serve(async (req) => {
   try {
     console.log('AI LaTeX generation function called')
     
-    const { level, chapter, subject, language }: GenerateLatexRequest = await req.json()
-    console.log('Request parameters:', { level, chapter, subject, language })
-
-    if (!level || !chapter) {
-      console.error('Missing required parameters:', { level, chapter })
-      throw new Error('Level and chapter are required')
-    }
-
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
-    if (!geminiApiKey) {
-      console.error('Gemini API key not found in environment')
-      throw new Error('Gemini API key not configured')
+    // Parse request body with error handling
+    let requestData;
+    try {
+      const body = await req.text();
+      console.log('Raw request body:', body);
+      requestData = JSON.parse(body);
+      console.log('Parsed request data:', requestData);
+    } catch (parseError) {
+      console.error('Request parsing error:', parseError);
+      throw new Error('Invalid JSON in request body');
     }
     
-    console.log('Gemini API key found, proceeding with generation')
+    const { level, chapter, subject, language }: GenerateLatexRequest = requestData;
+    console.log('Request parameters:', { level, chapter, subject, language });
+
+    if (!level || !chapter) {
+      console.error('Missing required parameters:', { level, chapter });
+      throw new Error('Level and chapter are required');
+    }
+
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) {
+      console.error('Gemini API key not found in environment');
+      throw new Error('Gemini API key not configured');
+    }
+    
+    console.log('Gemini API key found, length:', geminiApiKey.length);
 
     // Create a detailed prompt for LaTeX generation
     const prompt = language === 'fr' 
@@ -60,33 +72,39 @@ serve(async (req) => {
          
          Return only the LaTeX code without explanation.`
 
-    console.log('Calling Gemini API...')
+    console.log('Calling Gemini API...');
+    
+    const requestBody = JSON.stringify({
+      contents: [{
+        parts: [{
+          text: prompt
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.3,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 8192,
+      }
+    });
+    
+    console.log('Gemini request body prepared, length:', requestBody.length);
+    
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.3,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 8192,
-        }
-      })
-    })
+      body: requestBody
+    });
 
-    console.log('Gemini API response status:', response.status)
+    console.log('Gemini API response status:', response.status);
+    console.log('Gemini API response headers:', Object.fromEntries(response.headers.entries()));
     
     if (!response.ok) {
-      const errorData = await response.text()
-      console.error('Gemini API error:', errorData)
-      throw new Error(`Gemini API error (${response.status}): ${errorData}`)
+      const errorData = await response.text();
+      console.error('Gemini API error response:', errorData);
+      throw new Error(`Gemini API error (${response.status}): ${errorData}`);
     }
 
     const data = await response.json()
