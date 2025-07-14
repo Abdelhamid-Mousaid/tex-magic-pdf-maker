@@ -104,12 +104,13 @@ const generatePDF = async (userInfo: any, templateContent?: string | null): Prom
       cleanContent = cleanContent.replace(/\\documentclass\[.*?\]\{.*?\}/g, '');
       cleanContent = cleanContent.replace(/\\usepackage\[.*?\]\{.*?\}/g, '');
       cleanContent = cleanContent.replace(/\\usepackage\{.*?\}/g, '');
+      cleanContent = cleanContent.replace(/\\geometry\{.*?\}/g, '');
       
       // Remove begin/end document
       cleanContent = cleanContent.replace(/\\begin\{document\}/g, '');
       cleanContent = cleanContent.replace(/\\end\{document\}/g, '');
       
-      // Extract sections and subsections
+      // Extract sections and subsections first
       const sections = cleanContent.match(/\\section\{([^}]+)\}/g);
       const subsections = cleanContent.match(/\\subsection\{([^}]+)\}/g);
       
@@ -131,36 +132,62 @@ const generatePDF = async (userInfo: any, templateContent?: string | null): Prom
         addText('');
       }
       
-      // Extract text content between LaTeX commands
-      let textContent = cleanContent
-        .replace(/\\[a-zA-Z]+\*?(\[[^\]]*\])?(\{[^}]*\})?/g, ' ') // Remove LaTeX commands
-        .replace(/\{[^}]*\}/g, ' ') // Remove remaining braces
-        .replace(/\[[^\]]*\]/g, ' ') // Remove brackets
-        .replace(/\s+/g, ' ') // Normalize whitespace
-        .trim();
+      // More aggressive cleaning for text content
+      let textContent = cleanContent;
+      
+      // Remove all LaTeX commands and environments
+      textContent = textContent.replace(/\\[a-zA-Z*]+(\[[^\]]*\])?(\{[^}]*\})?/g, ' ');
+      textContent = textContent.replace(/\\[^a-zA-Z\s]/g, ' '); // Remove single char commands like \\
+      
+      // Remove remaining braces and brackets
+      textContent = textContent.replace(/\{[^}]*\}/g, ' ');
+      textContent = textContent.replace(/\[[^\]]*\]/g, ' ');
+      
+      // Remove measurements and units
+      textContent = textContent.replace(/\d+(\.\d+)?(cm|mm|pt|em|ex|px|in)/g, '');
       
       // Remove common LaTeX artifacts
       textContent = textContent
-        .replace(/geometry margin/g, '')
-        .replace(/utf8 inputenc/g, '')
-        .replace(/T1 fontenc/g, '')
-        .replace(/french babel/g, '')
-        .replace(/amsmath amssymb/g, '')
-        .replace(/\b(cm|mm|pt|em|ex)\b/g, '')
+        .replace(/geometry\s*margin/gi, '')
+        .replace(/utf8\s*inputenc/gi, '')
+        .replace(/T1\s*fontenc/gi, '')
+        .replace(/french\s*babel/gi, '')
+        .replace(/amsmath\s*amssymb/gi, '')
+        .replace(/\b(margin|inputenc|fontenc|babel|amsmath|amssymb)\b/gi, '')
+        .replace(/\[Contenu[^\]]*\]/gi, '') // Remove placeholder content
+        .replace(/\[Enoncé[^\]]*\]/gi, '') // Remove placeholder exercises
+        .replace(/\[.*?\]/g, '') // Remove any remaining brackets with content
+        .replace(/\s+/g, ' ') // Normalize whitespace
         .trim();
       
-      if (textContent && textContent.length > 50) {
+      // Filter out very short or meaningless content
+      const meaningfulSentences = textContent
+        .split(/[.!?]+/)
+        .filter(s => {
+          const cleaned = s.trim();
+          return cleaned.length > 15 && 
+                 !cleaned.match(/^\d/) && // Don't start with numbers
+                 !cleaned.match(/^(cm|mm|pt|em|ex)/) && // Don't start with units
+                 cleaned.split(' ').length > 3; // At least 4 words
+        });
+      
+      if (meaningfulSentences.length > 0) {
         addText('Contenu extrait du document:', headerFontSize);
-        // Split into sentences and display cleanly
-        const sentences = textContent.split(/[.!?]+/).filter(s => s.trim().length > 10);
-        sentences.slice(0, 10).forEach(sentence => {
-          if (sentence.trim()) {
-            addText(`• ${sentence.trim()}.`);
+        meaningfulSentences.slice(0, 8).forEach(sentence => {
+          const cleanSentence = sentence.trim();
+          if (cleanSentence) {
+            addText(`• ${cleanSentence}.`);
           }
         });
       } else {
         addText('Template LaTeX généré avec succès pour votre niveau.', headerFontSize);
         addText('Le contenu a été personnalisé selon vos besoins académiques.');
+        addText('');
+        addText('Fonctionnalités incluses:', headerFontSize);
+        addText('• Structure de cours organisée');
+        addText('• Sections pour exercices et devoirs');
+        addText('• Formatage professionnel');
+        addText('• Compatible avec les outils LaTeX standards');
       }
     } else {
       // This is a regular template
