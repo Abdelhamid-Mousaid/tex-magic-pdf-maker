@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { encode as base64Encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { PDFDocument, rgb } from "https://cdn.skypack.dev/pdf-lib@1.17.1";
+import { authenticateUser, fetchTemplateContent } from "./auth-handler.ts";
+import { generatePDF } from "./pdf-generator.ts";
+import { RequestBody, PdfGenerationResult } from "./types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,234 +15,6 @@ const logStep = (step: string, details?: any) => {
   console.log(`[GENERATE-PDF] ${step}${detailsStr}`);
 };
 
-// Generate actual PDF using pdf-lib
-const generatePDF = async (userInfo: any, templateContent?: string | null): Promise<Uint8Array> => {
-  const currentDate = new Date().toLocaleDateString('fr-FR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-
-  // Create a new PDF document
-  const pdfDoc = await PDFDocument.create();
-  
-  // Add a page to the document
-  let currentPage = pdfDoc.addPage([595.28, 841.89]); // A4 size in points
-  
-  // Get the width and height of the page
-  const { width, height } = currentPage.getSize();
-  
-  // Set up font and colors
-  const fontSize = 12;
-  const titleFontSize = 18;
-  const headerFontSize = 14;
-  const lineHeight = fontSize + 4;
-  const margin = 50;
-  
-  let yPosition = height - margin; // Start from top with margin
-  
-  // Helper function to add text with proper spacing and page breaks
-  const addText = (text: string, size: number = fontSize, isTitle: boolean = false, isHeader: boolean = false) => {
-    const lines = text.split('\n');
-    
-    for (const line of lines) {
-      // Check if we need a new page
-      if (yPosition < margin + size) {
-        currentPage = pdfDoc.addPage([595.28, 841.89]);
-        yPosition = height - margin;
-      }
-      
-      // Draw the text on current page
-      currentPage.drawText(line || ' ', {
-        x: margin,
-        y: yPosition,
-        size: size,
-        color: isTitle ? rgb(0, 0.2, 0.8) : rgb(0, 0, 0),
-      });
-      
-      // Move down for next line
-      yPosition -= (size + 6);
-    }
-    
-    // Add extra spacing after paragraphs
-    if (isHeader) {
-      yPosition -= 10;
-    } else if (isTitle) {
-      yPosition -= 15;
-    } else {
-      yPosition -= 5;
-    }
-  };
-
-  // Add title
-  addText('Math Planner - Planificateur Mathématiques', titleFontSize, true);
-  addText('='.repeat(50));
-  
-  // Add user information
-  addText('Informations de l\'Enseignant:', headerFontSize);
-  addText(`- Nom: ${userInfo.name}`);
-  addText(`- Email: ${userInfo.email}`);
-  addText(`- École: ${userInfo.school || 'Non spécifiée'}`);
-  addText(`- Année Scolaire: ${userInfo.academic_year || 'Non spécifiée'}`);
-  addText(`- Niveau: ${userInfo.level}`);
-  addText(`- Code Niveau: ${userInfo.level_code || userInfo.level}`);
-  addText('');
-  addText(`Date de génération: ${currentDate}`);
-  addText('');
-
-  if (templateContent) {
-    if (templateContent.includes('\\documentclass')) {
-      // This is AI-generated LaTeX content - extract meaningful content
-      addText('CONTENU GÉNÉRÉ PAR IA', headerFontSize);
-      addText('='.repeat(30));
-      addText('Ce document a été créé avec l\'intelligence artificielle Gemini');
-      addText('');
-      
-      // Better LaTeX content extraction
-      let cleanContent = templateContent;
-      
-      // Remove document class and packages
-      cleanContent = cleanContent.replace(/\\documentclass\[.*?\]\{.*?\}/g, '');
-      cleanContent = cleanContent.replace(/\\usepackage\[.*?\]\{.*?\}/g, '');
-      cleanContent = cleanContent.replace(/\\usepackage\{.*?\}/g, '');
-      cleanContent = cleanContent.replace(/\\geometry\{.*?\}/g, '');
-      
-      // Remove begin/end document
-      cleanContent = cleanContent.replace(/\\begin\{document\}/g, '');
-      cleanContent = cleanContent.replace(/\\end\{document\}/g, '');
-      
-      // Extract sections and subsections first
-      const sections = cleanContent.match(/\\section\{([^}]+)\}/g);
-      const subsections = cleanContent.match(/\\subsection\{([^}]+)\}/g);
-      
-      if (sections && sections.length > 0) {
-        addText('Structure du document:', headerFontSize);
-        sections.forEach((section, index) => {
-          const title = section.replace(/\\section\{([^}]+)\}/, '$1');
-          addText(`${index + 1}. ${title}`);
-        });
-        addText('');
-      }
-      
-      if (subsections && subsections.length > 0) {
-        addText('Sous-sections:', headerFontSize);
-        subsections.forEach((subsection, index) => {
-          const title = subsection.replace(/\\subsection\{([^}]+)\}/, '$1');
-          addText(`  • ${title}`);
-        });
-        addText('');
-      }
-      
-      // More aggressive cleaning for text content
-      let textContent = cleanContent;
-      
-      // Remove all LaTeX commands and environments
-      textContent = textContent.replace(/\\[a-zA-Z*]+(\[[^\]]*\])?(\{[^}]*\})?/g, ' ');
-      textContent = textContent.replace(/\\[^a-zA-Z\s]/g, ' '); // Remove single char commands like \\
-      
-      // Remove remaining braces and brackets
-      textContent = textContent.replace(/\{[^}]*\}/g, ' ');
-      textContent = textContent.replace(/\[[^\]]*\]/g, ' ');
-      
-      // Remove measurements and units
-      textContent = textContent.replace(/\d+(\.\d+)?(cm|mm|pt|em|ex|px|in)/g, '');
-      
-      // Remove common LaTeX artifacts
-      textContent = textContent
-        .replace(/geometry\s*margin/gi, '')
-        .replace(/utf8\s*inputenc/gi, '')
-        .replace(/T1\s*fontenc/gi, '')
-        .replace(/french\s*babel/gi, '')
-        .replace(/amsmath\s*amssymb/gi, '')
-        .replace(/\b(margin|inputenc|fontenc|babel|amsmath|amssymb)\b/gi, '')
-        .replace(/\[Contenu[^\]]*\]/gi, '') // Remove placeholder content
-        .replace(/\[Enoncé[^\]]*\]/gi, '') // Remove placeholder exercises
-        .replace(/\[.*?\]/g, '') // Remove any remaining brackets with content
-        .replace(/\s+/g, ' ') // Normalize whitespace
-        .trim();
-      
-      // Filter out very short or meaningless content
-      const meaningfulSentences = textContent
-        .split(/[.!?]+/)
-        .filter(s => {
-          const cleaned = s.trim();
-          return cleaned.length > 15 && 
-                 !cleaned.match(/^\d/) && // Don't start with numbers
-                 !cleaned.match(/^(cm|mm|pt|em|ex)/) && // Don't start with units
-                 cleaned.split(' ').length > 3; // At least 4 words
-        });
-      
-      if (meaningfulSentences.length > 0) {
-        addText('Contenu extrait du document:', headerFontSize);
-        meaningfulSentences.slice(0, 8).forEach(sentence => {
-          const cleanSentence = sentence.trim();
-          if (cleanSentence) {
-            addText(`• ${cleanSentence}.`);
-          }
-        });
-      } else {
-        addText('Template LaTeX généré avec succès pour votre niveau.', headerFontSize);
-        addText('Le contenu a été personnalisé selon vos besoins académiques.');
-        addText('');
-        addText('Fonctionnalités incluses:', headerFontSize);
-        addText('• Structure de cours organisée');
-        addText('• Sections pour exercices et devoirs');
-        addText('• Formatage professionnel');
-        addText('• Compatible avec les outils LaTeX standards');
-      }
-    } else {
-      // This is a regular template
-      addText('TEMPLATE PERSONNALISÉ UTILISÉ', headerFontSize);
-      addText('='.repeat(30));
-      addText(`Contenu du template:\n${templateContent.substring(0, 500)}...`);
-    }
-  } else {
-    addText(`Programme de Mathématiques - ${userInfo.level}`, headerFontSize);
-    addText('='.repeat(40));
-    addText('');
-    
-    addText('Objectifs Pédagogiques:', headerFontSize);
-    addText('1. Développer la capacité de raisonnement mathématique');
-    addText('2. Maîtriser les techniques de calcul');
-    addText('3. Résoudre des problèmes concrets');
-    addText('4. Développer l\'esprit d\'analyse et de synthèse');
-    addText('');
-    
-    addText('Contenu du Programme:', headerFontSize);
-    addText('');
-    addText('Chapitre 1: Nombres et Calculs');
-    addText('- Opérations sur les nombres réels');
-    addText('- Puissances et racines');
-    addText('- Calcul littéral');
-    addText('- Équations et inéquations');
-    addText('');
-    
-    addText('Chapitre 2: Géométrie');
-    addText('- Configurations géométriques');
-    addText('- Théorèmes de géométrie plane');
-    addText('- Transformations géométriques');
-    addText('- Calculs de périmètres, aires et volumes');
-    addText('');
-    
-    addText('Chapitre 3: Fonctions');
-    addText('- Notion de fonction');
-    addText('- Fonctions affines et linéaires');
-    addText('- Fonctions du second degré');
-    addText('- Représentations graphiques');
-  }
-  
-  // Add footer
-  addText('');
-  addText('='.repeat(50));
-  addText('Généré automatiquement par Math Planner');
-  addText('Outil professionnel de planification pédagogique');
-  addText('='.repeat(50));
-
-  // Serialize the PDFDocument to bytes (a Uint8Array)
-  const pdfBytes = await pdfDoc.save();
-  return pdfBytes;
-};
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -251,62 +24,23 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    // Validate environment variables
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error("Missing required environment variables: SUPABASE_URL or SUPABASE_ANON_KEY");
-    }
-
-    // Create Supabase client for authentication
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
-
-    // Get user from authorization header
+    // Authenticate user
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      logStep("No authorization header provided");
-      throw new Error("No authorization header provided");
-    }
-
-    const token = authHeader.replace("Bearer ", "");
-    logStep("Attempting authentication", { tokenLength: token.length });
-    
-    // More robust authentication handling
-    let user;
-    try {
-      const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-      if (userError) {
-        logStep("Authentication error", { error: userError.message });
-        throw new Error(`Authentication failed: ${userError.message}`);
-      }
-      
-      user = userData.user;
-      if (!user) {
-        logStep("User not found in token");
-        throw new Error("User not authenticated");
-      }
-      
-      logStep("User authenticated", { userId: user.id, email: user.email });
-    } catch (authError) {
-      logStep("Authentication exception", { error: authError.message });
-      throw new Error(`Authentication error: ${authError.message}`);
-    }
+    const { user, supabaseClient } = await authenticateUser(authHeader);
 
     // Parse request body with better error handling
-    let userInfo;
-    let customLatexContent = null;
+    let requestBody: RequestBody;
     try {
-      const body = await req.json();
-      userInfo = body.userInfo;
-      customLatexContent = body.customLatexContent;
-      if (!userInfo) {
+      requestBody = await req.json();
+      if (!requestBody.userInfo) {
         throw new Error("Missing userInfo in request body");
       }
-    } catch (parseError) {
+    } catch (parseError: any) {
       logStep("Request parsing error", { error: parseError.message });
       throw new Error("Invalid request body format");
     }
+
+    const { userInfo, customLatexContent } = requestBody;
 
     // Ensure required fields with defaults
     userInfo.level = userInfo.level || "Non spécifié";
@@ -319,28 +53,7 @@ serve(async (req) => {
 
     // Check if a template is specified
     if (userInfo.template_id) {
-      try {
-        // Fetch template content from storage
-        const { data: templateData, error: templateError } = await supabaseClient
-          .from('system_templates')
-          .select('file_path')
-          .eq('id', userInfo.template_id)
-          .eq('is_active', true)
-          .single();
-
-        if (!templateError && templateData) {
-          const { data: fileData, error: fileError } = await supabaseClient.storage
-            .from('latex-templates')
-            .download(templateData.file_path);
-
-          if (!fileError && fileData) {
-            templateContent = await fileData.text();
-            logStep('Template loaded successfully', { templateId: userInfo.template_id, contentLength: templateContent.length });
-          }
-        }
-      } catch (error) {
-        logStep('Template loading failed, using default', { error: error.message });
-      }
+      templateContent = await fetchTemplateContent(supabaseClient, userInfo.template_id);
     }
 
     // Use custom AI-generated LaTeX content if provided
@@ -370,17 +83,19 @@ serve(async (req) => {
         encodedLength: base64Content.length,
         dataUrlLength: dataUrl.length 
       });
-    } catch (encodingError) {
+    } catch (encodingError: any) {
       logStep("PDF base64 encoding failed", { error: encodingError.message });
       throw new Error(`Failed to encode PDF: ${encodingError.message}`);
     }
 
-    return new Response(JSON.stringify({ 
+    const result: PdfGenerationResult = {
       success: true,
       downloadUrl: dataUrl,
       filename: `math-planner-${(userInfo.level || 'niveau').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${Date.now()}.pdf`,
       message: templateContent ? "PDF generated with custom template" : "PDF generated successfully"
-    }), {
+    };
+
+    return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
@@ -388,10 +103,12 @@ serve(async (req) => {
   } catch (error: any) {
     logStep("ERROR", { message: error.message });
     
-    return new Response(JSON.stringify({ 
+    const errorResult: PdfGenerationResult = {
       error: error.message,
-      success: false 
-    }), {
+      success: false
+    };
+    
+    return new Response(JSON.stringify(errorResult), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
