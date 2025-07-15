@@ -100,40 +100,80 @@ const Dashboard = () => {
 
     setIsGenerating(true);
     try {
-      // Call the edge function to generate the PDF with AI-generated content
-      const { data, error } = await supabase.functions.invoke('generate-pdf', {
+      // Use the new LaTeX compilation service to compile the LaTeX directly
+      const { data, error } = await supabase.functions.invoke('compile-latex', {
         body: {
+          latexContent: latexContent,
           userInfo: {
+            level: selectedLevel.name_fr,
             name: profile.full_name,
             email: user?.email || '',
             school: profile.school_name || '',
             academic_year: profile.academic_year || '',
-            level: selectedLevel.name_fr,
-            level_code: selectedLevel.name,
-            template_id: null // Using AI-generated content instead
-          },
-          customLatexContent: latexContent
+            level_code: selectedLevel.name
+          }
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('LaTeX compilation error:', error);
+        toast({
+          title: "Erreur de compilation LaTeX",
+          description: "Impossible de compiler le LaTeX. Génération d'un PDF de base...",
+          variant: "destructive",
+        });
+        
+        // Fallback to original PDF generation with LaTeX content displayed
+        const fallbackResponse = await supabase.functions.invoke('generate-pdf', {
+          body: {
+            userInfo: {
+              name: profile.full_name,
+              email: user?.email || '',
+              school: profile.school_name || '',
+              academic_year: profile.academic_year || '',
+              level: selectedLevel.name_fr,
+              level_code: selectedLevel.name,
+              template_id: null
+            },
+            customLatexContent: latexContent
+          }
+        });
+
+        if (fallbackResponse.data?.downloadUrl) {
+          const link = document.createElement('a');
+          link.href = fallbackResponse.data.downloadUrl;
+          link.download = fallbackResponse.data.filename || 'document.pdf';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          toast({
+            title: "PDF de base généré",
+            description: "Document de base téléchargé avec le contenu LaTeX affiché.",
+          });
+        }
+        return;
+      }
 
       if (data?.downloadUrl) {
-        // Create download link with base64 data
+        // Download the compiled LaTeX PDF
         const link = document.createElement('a');
         link.href = data.downloadUrl;
-        link.download = `math-planner-ai-${selectedLevel.name}-${profile.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`;
+        link.download = data.filename || `latex-compiled-${selectedLevel.name}-${profile.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-
+        
         toast({
-          title: "PDF Généré avec IA!",
-          description: `Un document personnalisé pour ${selectedLevel.name_fr} a été généré avec l'intelligence artificielle.`,
+          title: "PDF LaTeX Compilé!",
+          description: `Document LaTeX compilé pour ${selectedLevel.name_fr} téléchargé avec succès!`,
         });
+      } else {
+        throw new Error('Aucune URL de téléchargement reçue');
       }
+      
     } catch (error: any) {
-      console.error("Error generating AI PDF:", error);
+      console.error("Error compiling LaTeX:", error);
       
       // Check if it's an authentication error
       if (error.message?.includes('Authentication') || 
@@ -144,14 +184,13 @@ const Dashboard = () => {
           description: "Votre session a expiré. Veuillez vous reconnecter.",
           variant: "destructive"
         });
-        // Force sign out to clean up invalid session
         await signOut();
         return;
       }
       
       toast({
-        title: "Erreur de Génération IA",
-        description: error.message || "Impossible de générer le document avec l'IA.",
+        title: "Erreur de Compilation LaTeX",
+        description: error.message || "Impossible de compiler le document LaTeX.",
         variant: "destructive"
       });
     } finally {
