@@ -75,62 +75,30 @@ serve(async (req) => {
 
     console.log('Template personalized successfully')
 
-    // Create temporary directory for compilation
-    const tempDir = await Deno.makeTempDir({ prefix: 'latex_compile_' })
-    const texFilePath = `${tempDir}/document.tex`
-    const pdfFilePath = `${tempDir}/document.pdf`
+    // Use LaTeX Online API for compilation (free service)
+    const latexOnlineUrl = 'https://latexonline.cc/compile'
+    
+    const formData = new FormData()
+    formData.append('text', personalizedContent)
+    formData.append('command', 'xelatex')
 
-    console.log(`Created temp directory: ${tempDir}`)
-
-    // Write LaTeX content to file
-    await Deno.writeTextFile(texFilePath, personalizedContent)
-    console.log('LaTeX file written')
-
-    // Compile with XeLaTeX
-    console.log('Starting XeLaTeX compilation...')
-    const xelatexProcess = new Deno.Command('xelatex', {
-      args: [
-        '-interaction=nonstopmode',
-        '-output-directory=' + tempDir,
-        texFilePath
-      ],
-      cwd: tempDir,
-      stdout: 'piped',
-      stderr: 'piped'
+    console.log('Sending to LaTeX Online API...')
+    
+    const response = await fetch(latexOnlineUrl, {
+      method: 'POST',
+      body: formData,
     })
 
-    const { code, stdout, stderr } = await xelatexProcess.output()
-    
-    const stdoutText = new TextDecoder().decode(stdout)
-    const stderrText = new TextDecoder().decode(stderr)
-    
-    console.log('XeLaTeX exit code:', code)
-    if (stdoutText) console.log('XeLaTeX stdout:', stdoutText)
-    if (stderrText) console.log('XeLaTeX stderr:', stderrText)
-
-    if (code !== 0) {
-      console.error('XeLaTeX compilation failed')
-      throw new Error(`LaTeX compilation failed with exit code ${code}. Error: ${stderrText}`)
+    if (!response.ok) {
+      throw new Error(`LaTeX compilation failed: ${response.status} ${response.statusText}`)
     }
 
-    // Check if PDF was created
-    try {
-      await Deno.stat(pdfFilePath)
-      console.log('PDF file created successfully')
-    } catch {
-      throw new Error('PDF file was not created despite successful compilation')
-    }
-
-    // Read PDF file
-    const pdfBytes = await Deno.readFile(pdfFilePath)
-    console.log(`PDF file size: ${pdfBytes.length} bytes`)
-
-    // Clean up temporary directory
-    await Deno.remove(tempDir, { recursive: true })
-    console.log('Temporary directory cleaned up')
+    // Get PDF bytes
+    const pdfBytes = await response.arrayBuffer()
+    console.log(`PDF compiled successfully, size: ${pdfBytes.byteLength} bytes`)
 
     // Convert to base64 for transmission
-    const pdfBase64 = btoa(String.fromCharCode(...pdfBytes))
+    const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBytes)))
 
     // Create filename
     const filename = `${level_name.replace(/\s+/g, '-')}-Ch${chapter_number}-${user_info.full_name.replace(/\s+/g, '-')}.pdf`
@@ -142,7 +110,7 @@ serve(async (req) => {
         success: true,
         pdf_data: pdfBase64,
         filename: filename,
-        message: 'PDF compiled successfully'
+        message: 'PDF compiled successfully with XeLaTeX'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
