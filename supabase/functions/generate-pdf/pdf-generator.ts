@@ -78,16 +78,56 @@ export async function generatePDF(userInfo: UserInfo, templateContent?: string |
 
   if (templateContent) {
     if (templateContent.includes('\\documentclass')) {
-      // This is AI-generated LaTeX content - extract meaningful content
+      // This is AI-generated LaTeX content - show comprehensive information
       addText('CONTENU GÉNÉRÉ PAR IA', headerFontSize);
       addText('='.repeat(30));
-      addText('Ce document a été créé avec l\'intelligence artificielle Gemini');
+      addText('Ce document a été créé avec l\'intelligence artificielle DeepSeek');
       addText('');
       
+      // First show the LaTeX document structure
+      addText('STRUCTURE DU DOCUMENT LATEX:', headerFontSize);
+      addText('='.repeat(25));
+      
+      // Extract and show document class
+      const docClassMatch = templateContent.match(/\\documentclass\[([^\]]*)\]\{([^}]+)\}/);
+      if (docClassMatch) {
+        addText(`Type de document: ${docClassMatch[2]} (${docClassMatch[1]})`);
+      }
+      
+      // Extract and show packages
+      const packages = templateContent.match(/\\usepackage(\[[^\]]*\])?\{([^}]+)\}/g) || [];
+      if (packages.length > 0) {
+        addText('');
+        addText('Packages LaTeX utilisés:');
+        packages.slice(0, 8).forEach(pkg => {
+          const match = pkg.match(/\\usepackage(\[[^\]]*\])?\{([^}]+)\}/);
+          if (match) {
+            addText(`  • ${match[2]}${match[1] ? ` ${match[1]}` : ''}`);
+          }
+        });
+      }
+      
+      // Extract title, author, date
+      const titleMatch = templateContent.match(/\\title\{([^}]+)\}/);
+      const authorMatch = templateContent.match(/\\author\{([^}]+)\}/);
+      const dateMatch = templateContent.match(/\\date\{([^}]+)\}/);
+      
+      if (titleMatch || authorMatch || dateMatch) {
+        addText('');
+        addText('Informations du document:');
+        if (titleMatch) addText(`  Titre: ${titleMatch[1]}`);
+        if (authorMatch) addText(`  Auteur: ${authorMatch[1]}`);
+        if (dateMatch) addText(`  Date: ${dateMatch[1]}`);
+      }
+      
+      addText('');
+      
+      // Process and show content structure
       const processed = processLatexContent(templateContent);
       
       if (processed.sections.length > 0) {
-        addText('Structure du document:', headerFontSize);
+        addText('SECTIONS DU DOCUMENT:', headerFontSize);
+        addText('='.repeat(20));
         processed.sections.forEach((section, index) => {
           addText(`${index + 1}. ${section}`);
         });
@@ -95,37 +135,88 @@ export async function generatePDF(userInfo: UserInfo, templateContent?: string |
       }
       
       if (processed.subsections.length > 0) {
-        addText('Sous-sections:', headerFontSize);
-        processed.subsections.forEach((subsection) => {
-          addText(`  • ${subsection}`);
+        addText('Sous-sections détaillées:');
+        processed.subsections.forEach((subsection, index) => {
+          addText(`  ${index + 1}. ${subsection}`);
         });
         addText('');
       }
       
-      if (processed.hasMeaningfulContent) {
-        addText('Contenu extrait du document:', headerFontSize);
-        const sentences = processed.textContent.split(/[.!?]+/).filter(s => s.trim().length > 0);
-        sentences.slice(0, 8).forEach(sentence => {
-          const cleanSentence = sentence.trim();
-          if (cleanSentence) {
-            addText(`• ${cleanSentence}.`);
+      // Show meaningful content if available
+      if (processed.hasMeaningfulContent && processed.textContent.length > 20) {
+        addText('CONTENU EXTRAIT:', headerFontSize);
+        addText('='.repeat(15));
+        
+        // Split content into meaningful parts
+        const contentParts = processed.textContent.split(/[.!]\s+/).filter(part => part.trim().length > 10);
+        
+        contentParts.slice(0, 12).forEach(part => {
+          const cleanPart = part.trim();
+          if (cleanPart && !cleanPart.match(/^(Section|Titre|Auteur|Date):/)) {
+            addText(`• ${cleanPart}${cleanPart.endsWith('.') ? '' : '.'}`);
           }
         });
-      } else {
-        addText('Template LaTeX généré avec succès pour votre niveau.', headerFontSize);
-        addText('Le contenu a été personnalisé selon vos besoins académiques.');
-        addText('');
-        addText('Fonctionnalités incluses:', headerFontSize);
-        addText('• Structure de cours organisée');
-        addText('• Sections pour exercices et devoirs');
-        addText('• Formatage professionnel');
-        addText('• Compatible avec les outils LaTeX standards');
+        
+        if (contentParts.length > 12) {
+          addText(`... et ${contentParts.length - 12} éléments de contenu supplémentaires`);
+        }
       }
+      
+      // Show LaTeX code preview
+      addText('');
+      addText('APERÇU DU CODE LATEX GÉNÉRÉ:', headerFontSize);
+      addText('='.repeat(30));
+      
+      // Show first part of LaTeX code (cleaned up for readability)
+      const codeLines = templateContent.split('\n').filter(line => 
+        line.trim() && 
+        !line.includes('\\usepackage') && 
+        !line.includes('\\documentclass')
+      );
+      
+      const previewLines = codeLines.slice(0, 15);
+      previewLines.forEach(line => {
+        const cleanLine = line.replace(/^\s+/, '  '); // Normalize indentation
+        if (cleanLine.length > 80) {
+          addText(cleanLine.substring(0, 77) + '...');
+        } else {
+          addText(cleanLine);
+        }
+      });
+      
+      if (codeLines.length > 15) {
+        addText('...');
+        addText(`[${codeLines.length - 15} lignes de code supplémentaires]`);
+      }
+      
+      addText('');
+      addText('INFORMATIONS TECHNIQUES:', headerFontSize);
+      addText('='.repeat(22));
+      addText(`Taille du template: ${templateContent.length} caractères`);
+      addText(`Nombre de lignes: ${templateContent.split('\n').length}`);
+      addText(`Sections trouvées: ${processed.sections.length}`);
+      addText(`Contenu traitable: ${processed.hasMeaningfulContent ? 'Oui' : 'Non'}`);
+      
     } else {
-      // This is a regular template
+      // This is a regular template or custom content
       addText('TEMPLATE PERSONNALISÉ UTILISÉ', headerFontSize);
       addText('='.repeat(30));
-      addText(`Contenu du template:\n${templateContent.substring(0, 500)}...`);
+      addText('');
+      
+      // Show first part of the content
+      const contentPreview = templateContent.substring(0, 800);
+      const lines = contentPreview.split('\n');
+      
+      lines.forEach(line => {
+        if (line.trim()) {
+          addText(line.length > 80 ? line.substring(0, 77) + '...' : line);
+        }
+      });
+      
+      if (templateContent.length > 800) {
+        addText('');
+        addText(`... [${templateContent.length - 800} caractères supplémentaires]`);
+      }
     }
   } else {
     addText(`Programme de Mathématiques - ${userInfo.level}`, headerFontSize);
