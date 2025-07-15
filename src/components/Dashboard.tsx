@@ -11,7 +11,7 @@ import PlanSelection from './PlanSelection';
 import ProfileSettings from './ProfileSettings';
 import LevelSelectionModal from './LevelSelectionModal';
 import { AILatexGenerator } from './AILatexGenerator';
-import { LaTeX } from 'latex.js';
+import LaTeX from 'latex.js';
 
 
 interface UserProfile {
@@ -103,7 +103,7 @@ const Dashboard = () => {
     try {
       // Client-side LaTeX compilation using latex.js
       const generator = new LaTeX();
-      const { pdf } = await generator.compileLaTeX(latexContent);
+      const { pdf } = await generator.parseAndCompile(latexContent);
       
       // Create blob and download URL
       const blob = new Blob([pdf], { type: 'application/pdf' });
