@@ -75,74 +75,62 @@ serve(async (req) => {
 
     console.log('Template personalized successfully')
 
-    // Try multiple LaTeX compilation services
-    let response: Response | null = null
-    let lastError = ''
+    // Try LaTeX.online compilation service
+    console.log('Attempting LaTeX compilation with latex.online...')
     
-    // Service 1: Try latex.online
-    try {
-      console.log('Trying latex.online service...')
-      const latexOnlineUrl = 'https://latex.online/compile'
-      
-      const formData = new FormData()
-      formData.append('text', personalizedContent)
-      formData.append('command', 'xelatex')
-      
-      response = await fetch(latexOnlineUrl, {
-        method: 'POST',
-        body: formData,
-      })
-      
-      if (response.ok) {
-        console.log('Successfully compiled with latex.online')
-      } else {
-        throw new Error(`Status: ${response.status}`)
+    const latexOnlineUrl = 'https://latexonline.cc/compile'
+    
+    const formData = new FormData()
+    formData.append('text', personalizedContent)
+    formData.append('command', 'xelatex')
+    formData.append('return', 'pdf')
+    
+    console.log('Sending LaTeX content to compilation service...')
+    console.log(`Content length: ${personalizedContent.length} characters`)
+    
+    const response = await fetch(latexOnlineUrl, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'Accept': 'application/pdf, application/json'
       }
-    } catch (error) {
-      console.log('latex.online failed:', error.message)
-      lastError = error.message
-      response = null
+    })
+    
+    console.log(`Compilation response status: ${response.status}`)
+    console.log(`Response headers:`, Object.fromEntries(response.headers.entries()))
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('LaTeX compilation failed:', errorText)
+      throw new Error(`LaTeX compilation failed: ${response.status} - ${errorText}`)
     }
     
-    // Service 2: Try QuickLaTeX if first service fails
-    if (!response || !response.ok) {
-      try {
-        console.log('Trying QuickLaTeX service...')
-        const quickLatexUrl = 'https://quicklatex.com/latex3.f'
-        
-        const formData = new FormData()
-        formData.append('formula', personalizedContent)
-        formData.append('fformat', 'pdf')
-        formData.append('fsize', '12px')
-        formData.append('fcolor', '000000')
-        formData.append('mode', '0')
-        formData.append('out', '1')
-        formData.append('remhost', 'quicklatex.com')
-        
-        response = await fetch(quickLatexUrl, {
-          method: 'POST',
-          body: formData,
-        })
-        
-        if (response.ok) {
-          console.log('Successfully compiled with QuickLaTeX')
-        } else {
-          throw new Error(`Status: ${response.status}`)
-        }
-      } catch (error) {
-        console.log('QuickLaTeX failed:', error.message)
-        lastError += '; ' + error.message
-        response = null
-      }
+    // Check content type to ensure we got a PDF
+    const contentType = response.headers.get('content-type')
+    console.log(`Response content-type: ${contentType}`)
+    
+    if (!contentType || !contentType.includes('application/pdf')) {
+      const responseText = await response.text()
+      console.error('Expected PDF but got:', contentType, 'Content:', responseText.substring(0, 500))
+      throw new Error(`Expected PDF but received: ${contentType}`)
     }
-
-    if (!response || !response.ok) {
-      throw new Error(`All LaTeX compilation services failed. Last errors: ${lastError}`)
-    }
-
+    
     // Get PDF bytes
     const pdfBytes = await response.arrayBuffer()
     console.log(`PDF compiled successfully, size: ${pdfBytes.byteLength} bytes`)
+    
+    // Validate PDF content by checking PDF signature
+    const pdfSignature = new Uint8Array(pdfBytes.slice(0, 4))
+    const expectedPdfSignature = new Uint8Array([0x25, 0x50, 0x44, 0x46]) // %PDF
+    
+    const isValidPdf = pdfSignature.every((byte, index) => byte === expectedPdfSignature[index])
+    
+    if (!isValidPdf) {
+      console.error('Invalid PDF signature. First 20 bytes:', new Uint8Array(pdfBytes.slice(0, 20)))
+      throw new Error('Generated file is not a valid PDF')
+    }
+    
+    console.log('PDF validation successful - valid PDF signature detected')
 
     // Convert to base64 for transmission
     const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBytes)))
