@@ -11,7 +11,8 @@ import PlanSelection from './PlanSelection';
 import ProfileSettings from './ProfileSettings';
 import LevelSelectionModal from './LevelSelectionModal';
 import { AILatexGenerator } from './AILatexGenerator';
-import LaTeX from 'latex.js';
+import html2pdf from 'html2pdf.js';
+import { convertLatexToHtml } from '@/utils/latexToHtml';
 
 
 interface UserProfile {
@@ -101,36 +102,53 @@ const Dashboard = () => {
 
     setIsGenerating(true);
     try {
-      // Client-side LaTeX compilation using latex.js
-      const generator = new LaTeX();
-      const { pdf } = await generator.parseAndCompile(latexContent);
+      // Convert LaTeX to HTML with MathJax support
+      const { html, hasErrors, errors } = convertLatexToHtml(latexContent);
       
-      // Create blob and download URL
-      const blob = new Blob([pdf], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
+      if (hasErrors) {
+        toast({
+          title: "Erreur de Conversion LaTeX",
+          description: errors.join(', '),
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create a temporary container for rendering
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = `
+        <div style="background: white; padding: 40px; font-family: 'Times New Roman', serif; line-height: 1.6;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #333; margin-bottom: 10px;">Document Mathématique</h1>
+            <p style="color: #666; font-size: 14px;">Généré pour ${profile.full_name} - ${selectedLevel.name_fr}</p>
+          </div>
+          ${html}
+        </div>
+      `;
       
-      // Download the compiled PDF
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `latex-${selectedLevel.name}-${profile.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Clean up the URL
-      URL.revokeObjectURL(url);
+      // Configure html2pdf options
+      const options = {
+        margin: 1,
+        filename: `math-${selectedLevel.name}-${profile.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+
+      // Generate and download PDF
+      await html2pdf().set(options).from(tempDiv).save();
       
       toast({
-        title: "PDF LaTeX Compilé!",
-        description: `Document LaTeX compilé pour ${selectedLevel.name_fr} téléchargé avec succès!`,
+        title: "PDF Généré!",
+        description: `Document PDF pour ${selectedLevel.name_fr} téléchargé avec succès!`,
       });
       
     } catch (error: any) {
-      console.error("Error compiling LaTeX:", error);
+      console.error("Error generating PDF:", error);
       
       toast({
-        title: "Erreur de Compilation LaTeX",
-        description: error.message || "Impossible de compiler le document LaTeX. Vérifiez la syntaxe LaTeX.",
+        title: "Erreur de Génération PDF",
+        description: error.message || "Impossible de générer le document PDF.",
         variant: "destructive"
       });
     } finally {
