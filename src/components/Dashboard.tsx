@@ -8,7 +8,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import PlanSelection from './PlanSelection';
-import { generateXeLaTeXTemplate } from '@/utils/latexGenerator';
 import ProfileSettings from './ProfileSettings';
 import LevelSelectionModal from './LevelSelectionModal';
 import { AILatexGenerator } from './AILatexGenerator';

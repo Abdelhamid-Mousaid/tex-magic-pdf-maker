@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Check, Star, BookOpen } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import LevelSelection from './LevelSelection';
 
 interface SubscriptionPlan {
   id: string;
@@ -24,8 +23,6 @@ interface PlanSelectionProps {
 
 const PlanSelection: React.FC<PlanSelectionProps> = ({ onBack, onPlanSelected }) => {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
-  const [showLevelSelection, setShowLevelSelection] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,25 +59,11 @@ const PlanSelection: React.FC<PlanSelectionProps> = ({ onBack, onPlanSelected })
       return;
     }
     
-    setSelectedPlan(plan);
-    setShowLevelSelection(true);
+    toast({
+      title: "Redirection",
+      description: "Cette fonctionnalité sera bientôt disponible.",
+    });
   };
-
-  const handleLevelSelected = () => {
-    setShowLevelSelection(false);
-    onPlanSelected();
-    onBack();
-  };
-
-  if (showLevelSelection && selectedPlan) {
-    return (
-      <LevelSelection
-        selectedPlan={selectedPlan}
-        onBack={() => setShowLevelSelection(false)}
-        onComplete={handleLevelSelected}
-      />
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
