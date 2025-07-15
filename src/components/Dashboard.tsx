@@ -11,6 +11,7 @@ import PlanSelection from './PlanSelection';
 import ProfileSettings from './ProfileSettings';
 import LevelSelectionModal from './LevelSelectionModal';
 import { AILatexGenerator } from './AILatexGenerator';
+import { LaTeX } from 'latex.js';
 
 
 interface UserProfile {
@@ -100,97 +101,36 @@ const Dashboard = () => {
 
     setIsGenerating(true);
     try {
-      // Use the new LaTeX compilation service to compile the LaTeX directly
-      const { data, error } = await supabase.functions.invoke('compile-latex', {
-        body: {
-          latexContent: latexContent,
-          userInfo: {
-            level: selectedLevel.name_fr,
-            name: profile.full_name,
-            email: user?.email || '',
-            school: profile.school_name || '',
-            academic_year: profile.academic_year || '',
-            level_code: selectedLevel.name
-          }
-        }
+      // Client-side LaTeX compilation using latex.js
+      const generator = new LaTeX();
+      const { pdf } = await generator.compileLaTeX(latexContent);
+      
+      // Create blob and download URL
+      const blob = new Blob([pdf], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      
+      // Download the compiled PDF
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `latex-${selectedLevel.name}-${profile.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the URL
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "PDF LaTeX Compilé!",
+        description: `Document LaTeX compilé pour ${selectedLevel.name_fr} téléchargé avec succès!`,
       });
-
-      if (error) {
-        console.error('LaTeX compilation error:', error);
-        toast({
-          title: "Erreur de compilation LaTeX",
-          description: "Impossible de compiler le LaTeX. Génération d'un PDF de base...",
-          variant: "destructive",
-        });
-        
-        // Fallback to original PDF generation with LaTeX content displayed
-        const fallbackResponse = await supabase.functions.invoke('generate-pdf', {
-          body: {
-            userInfo: {
-              name: profile.full_name,
-              email: user?.email || '',
-              school: profile.school_name || '',
-              academic_year: profile.academic_year || '',
-              level: selectedLevel.name_fr,
-              level_code: selectedLevel.name,
-              template_id: null
-            },
-            customLatexContent: latexContent
-          }
-        });
-
-        if (fallbackResponse.data?.downloadUrl) {
-          const link = document.createElement('a');
-          link.href = fallbackResponse.data.downloadUrl;
-          link.download = fallbackResponse.data.filename || 'document.pdf';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          toast({
-            title: "PDF de base généré",
-            description: "Document de base téléchargé avec le contenu LaTeX affiché.",
-          });
-        }
-        return;
-      }
-
-      if (data?.downloadUrl) {
-        // Download the compiled LaTeX PDF
-        const link = document.createElement('a');
-        link.href = data.downloadUrl;
-        link.download = data.filename || `latex-compiled-${selectedLevel.name}-${profile.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        toast({
-          title: "PDF LaTeX Compilé!",
-          description: `Document LaTeX compilé pour ${selectedLevel.name_fr} téléchargé avec succès!`,
-        });
-      } else {
-        throw new Error('Aucune URL de téléchargement reçue');
-      }
       
     } catch (error: any) {
       console.error("Error compiling LaTeX:", error);
       
-      // Check if it's an authentication error
-      if (error.message?.includes('Authentication') || 
-          error.message?.includes('Invalid Refresh Token') ||
-          error.message?.includes('session_not_found')) {
-        toast({
-          title: "Session Expirée",
-          description: "Votre session a expiré. Veuillez vous reconnecter.",
-          variant: "destructive"
-        });
-        await signOut();
-        return;
-      }
-      
       toast({
         title: "Erreur de Compilation LaTeX",
-        description: error.message || "Impossible de compiler le document LaTeX.",
+        description: error.message || "Impossible de compiler le document LaTeX. Vérifiez la syntaxe LaTeX.",
         variant: "destructive"
       });
     } finally {
