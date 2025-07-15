@@ -10,7 +10,8 @@ import { toast } from '@/hooks/use-toast';
 import PlanSelection from './PlanSelection';
 import ProfileSettings from './ProfileSettings';
 import LevelSelectionModal from './LevelSelectionModal';
-import { AILatexGenerator } from './AILatexGenerator';
+import { SemesterSelectionModal } from './SemesterSelectionModal';
+import { ChapterSelectionModal } from './ChapterSelectionModal';
 import html2pdf from 'html2pdf.js';
 import { convertLatexToHtml } from '@/utils/latexToHtml';
 
@@ -41,8 +42,11 @@ const Dashboard = () => {
   const [showPlans, setShowPlans] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showLevelModal, setShowLevelModal] = useState(false);
+  const [showSemesterModal, setShowSemesterModal] = useState(false);
+  const [showChapterModal, setShowChapterModal] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState<any>(null);
-  const [generatedLatex, setGeneratedLatex] = useState<string>("");
+  const [selectedSemester, setSelectedSemester] = useState<string>("");
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
@@ -95,15 +99,47 @@ const Dashboard = () => {
   const handleLevelSelected = (selectedLevel: any) => {
     setSelectedLevel(selectedLevel);
     setShowLevelModal(false);
+    setShowSemesterModal(true);
   };
 
-  const handleLatexGenerated = async (latexContent: string) => {
+  const handleSemesterSelected = (semester: string) => {
+    setSelectedSemester(semester);
+    setShowSemesterModal(false);
+    setShowChapterModal(true);
+  };
+
+  const handleChapterSelected = (template: any) => {
+    setSelectedTemplate(template);
+    setShowChapterModal(false);
+    generatePdfFromTemplate(template);
+  };
+
+  const generatePdfFromTemplate = async (template: any) => {
     if (!profile || !selectedLevel) return;
 
     setIsGenerating(true);
     try {
+      // Fetch template content from Supabase Storage
+      const { data: templateData, error } = await supabase.storage
+        .from('latex-templates')
+        .download(template.file_path);
+
+      if (error) throw error;
+
+      const templateContent = await templateData.text();
+      
+      // Personalize template with user data
+      let personalizedContent = templateContent
+        .replace(/\{nom_utilisateur\}/g, profile.full_name)
+        .replace(/\{nom_ecole\}/g, profile.school_name || 'École')
+        .replace(/\{annee_scolaire\}/g, profile.academic_year || new Date().getFullYear().toString())
+        .replace(/\{niveau\}/g, selectedLevel.name_fr)
+        .replace(/\{semestre\}/g, selectedSemester.replace('_', ' '))
+        .replace(/\{chapitre\}/g, `Chapitre ${template.chapter_number}`)
+        .replace(/\{date\}/g, new Date().toLocaleDateString('fr-FR'));
+
       // Convert LaTeX to HTML with MathJax support
-      const { html, hasErrors, errors } = convertLatexToHtml(latexContent);
+      const { html, hasErrors, errors } = convertLatexToHtml(personalizedContent);
       
       if (hasErrors) {
         toast({
@@ -119,8 +155,13 @@ const Dashboard = () => {
       tempDiv.innerHTML = `
         <div style="background: white; padding: 40px; font-family: 'Times New Roman', serif; line-height: 1.6;">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #333; margin-bottom: 10px;">Document Mathématique</h1>
-            <p style="color: #666; font-size: 14px;">Généré pour ${profile.full_name} - ${selectedLevel.name_fr}</p>
+            <h1 style="color: #333; margin-bottom: 10px;">${template.name}</h1>
+            <p style="color: #666; font-size: 14px;">
+              ${profile.full_name} - ${selectedLevel.name_fr} - ${selectedSemester.replace('_', ' ')}
+            </p>
+            <p style="color: #666; font-size: 12px;">
+              ${profile.school_name || ''} - ${new Date().toLocaleDateString('fr-FR')}
+            </p>
           </div>
           ${html}
         </div>
@@ -129,7 +170,7 @@ const Dashboard = () => {
       // Configure html2pdf options
       const options = {
         margin: 1,
-        filename: `math-${selectedLevel.name}-${profile.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`,
+        filename: `${selectedLevel.name}-Ch${template.chapter_number}-${profile.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
@@ -140,20 +181,22 @@ const Dashboard = () => {
       
       toast({
         title: "PDF Généré!",
-        description: `Document PDF pour ${selectedLevel.name_fr} téléchargé avec succès!`,
+        description: `Document ${template.name} téléchargé avec succès!`,
       });
       
     } catch (error: any) {
       console.error("Error generating PDF:", error);
       
       toast({
-        title: "Erreur de Génération PDF",
+        title: "Erreur de Génération PDF", 
         description: error.message || "Impossible de générer le document PDF.",
         variant: "destructive"
       });
     } finally {
       setIsGenerating(false);
       setSelectedLevel(null);
+      setSelectedSemester("");
+      setSelectedTemplate(null);
     }
   };
 
@@ -271,14 +314,6 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            {/* AI LaTeX Generator */}
-            {selectedLevel && profile && (
-              <AILatexGenerator
-                userProfile={profile}
-                selectedLevel={selectedLevel}
-                onLatexGenerated={handleLatexGenerated}
-              />
-            )}
           </div>
 
           {/* Sidebar */}
@@ -334,6 +369,24 @@ const Dashboard = () => {
         onClose={() => setShowLevelModal(false)}
         onGenerate={handleLevelSelected}
         loading={isGenerating}
+      />
+
+      {/* Semester Selection Modal */}
+      <SemesterSelectionModal
+        isOpen={showSemesterModal}
+        onClose={() => setShowSemesterModal(false)}
+        onSemesterSelected={handleSemesterSelected}
+        levelName={selectedLevel?.name_fr}
+      />
+
+      {/* Chapter Selection Modal */}
+      <ChapterSelectionModal
+        isOpen={showChapterModal}
+        onClose={() => setShowChapterModal(false)}
+        onChapterSelected={handleChapterSelected}
+        levelId={selectedLevel?.id}
+        semester={selectedSemester}
+        levelName={selectedLevel?.name_fr}
       />
     </div>
   );

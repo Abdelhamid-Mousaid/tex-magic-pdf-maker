@@ -106,6 +106,7 @@ export type Database = {
       }
       system_templates: {
         Row: {
+          chapter_number: number | null
           created_at: string
           description: string | null
           file_path: string
@@ -115,9 +116,11 @@ export type Database = {
           level_id: string | null
           name: string
           plan_id: string | null
+          semester: string | null
           updated_at: string
         }
         Insert: {
+          chapter_number?: number | null
           created_at?: string
           description?: string | null
           file_path: string
@@ -127,9 +130,11 @@ export type Database = {
           level_id?: string | null
           name: string
           plan_id?: string | null
+          semester?: string | null
           updated_at?: string
         }
         Update: {
+          chapter_number?: number | null
           created_at?: string
           description?: string | null
           file_path?: string
@@ -139,6 +144,7 @@ export type Database = {
           level_id?: string | null
           name?: string
           plan_id?: string | null
+          semester?: string | null
           updated_at?: string
         }
         Relationships: [
