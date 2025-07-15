@@ -12,8 +12,6 @@ import ProfileSettings from './ProfileSettings';
 import LevelSelectionModal from './LevelSelectionModal';
 import { SemesterSelectionModal } from './SemesterSelectionModal';
 import { ChapterSelectionModal } from './ChapterSelectionModal';
-import html2pdf from 'html2pdf.js';
-import { convertLatexToHtml } from '@/utils/latexToHtml';
 
 
 interface UserProfile {
@@ -119,77 +117,66 @@ const Dashboard = () => {
 
     setIsGenerating(true);
     try {
-      // Fetch template content from Supabase Storage
-      const { data: templateData, error } = await supabase.storage
-        .from('latex-templates')
-        .download(template.file_path);
-
-      if (error) throw error;
-
-      const templateContent = await templateData.text();
+      console.log('Starting PDF generation with template:', template.name);
       
-      // Personalize template with user data
-      let personalizedContent = templateContent
-        .replace(/\{nom_utilisateur\}/g, profile.full_name)
-        .replace(/\{nom_ecole\}/g, profile.school_name || 'École')
-        .replace(/\{annee_scolaire\}/g, profile.academic_year || new Date().getFullYear().toString())
-        .replace(/\{niveau\}/g, selectedLevel.name_fr)
-        .replace(/\{semestre\}/g, selectedSemester.replace('_', ' '))
-        .replace(/\{chapitre\}/g, `Chapitre ${template.chapter_number}`)
-        .replace(/\{date\}/g, new Date().toLocaleDateString('fr-FR'));
-
-      // Convert LaTeX to HTML with MathJax support
-      const { html, hasErrors, errors } = convertLatexToHtml(personalizedContent);
-      
-      if (hasErrors) {
-        toast({
-          title: "Erreur de Conversion LaTeX",
-          description: errors.join(', '),
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Create a temporary container for rendering
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = `
-        <div style="background: white; padding: 40px; font-family: 'Times New Roman', serif; line-height: 1.6;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #333; margin-bottom: 10px;">${template.name}</h1>
-            <p style="color: #666; font-size: 14px;">
-              ${profile.full_name} - ${selectedLevel.name_fr} - ${selectedSemester.replace('_', ' ')}
-            </p>
-            <p style="color: #666; font-size: 12px;">
-              ${profile.school_name || ''} - ${new Date().toLocaleDateString('fr-FR')}
-            </p>
-          </div>
-          ${html}
-        </div>
-      `;
-      
-      // Configure html2pdf options
-      const options = {
-        margin: 1,
-        filename: `${selectedLevel.name}-Ch${template.chapter_number}-${profile.full_name?.toLowerCase().replace(/\s+/g, '-') || 'document'}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      // Prepare compilation request
+      const compileRequest = {
+        template_path: template.file_path,
+        user_info: {
+          full_name: profile.full_name,
+          school_name: profile.school_name,
+          academic_year: profile.academic_year
+        },
+        level_name: selectedLevel.name_fr,
+        semester: selectedSemester,
+        chapter_number: template.chapter_number,
+        template_name: template.name
       };
 
-      // Generate and download PDF
-      await html2pdf().set(options).from(tempDiv).save();
+      console.log('Calling LaTeX compilation function...');
       
+      // Call the compilation edge function
+      const { data, error } = await supabase.functions.invoke('compile-latex-pdf', {
+        body: compileRequest
+      });
+
+      if (error) {
+        console.error('Compilation function error:', error);
+        throw error;
+      }
+
+      if (!data.success) {
+        console.error('Compilation failed:', data.error);
+        throw new Error(data.error || 'PDF compilation failed');
+      }
+
+      console.log('PDF compiled successfully, downloading...');
+
+      // Convert base64 to blob and download
+      const pdfBytes = Uint8Array.from(atob(data.pdf_data), c => c.charCodeAt(0));
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
       toast({
         title: "PDF Généré!",
-        description: `Document ${template.name} téléchargé avec succès!`,
+        description: `Document ${template.name} compilé et téléchargé avec succès!`,
       });
       
     } catch (error: any) {
       console.error("Error generating PDF:", error);
       
       toast({
-        title: "Erreur de Génération PDF", 
-        description: error.message || "Impossible de générer le document PDF.",
+        title: "Erreur de Compilation", 
+        description: error.message || "Impossible de compiler le document LaTeX.",
         variant: "destructive"
       });
     } finally {
