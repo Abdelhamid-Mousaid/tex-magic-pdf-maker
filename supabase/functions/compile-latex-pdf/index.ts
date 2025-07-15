@@ -75,22 +75,69 @@ serve(async (req) => {
 
     console.log('Template personalized successfully')
 
-    // Use LaTeX Online API for compilation (free service)
-    const latexOnlineUrl = 'https://latexonline.cc/compile'
+    // Try multiple LaTeX compilation services
+    let response: Response | null = null
+    let lastError = ''
     
-    const formData = new FormData()
-    formData.append('text', personalizedContent)
-    formData.append('command', 'xelatex')
-
-    console.log('Sending to LaTeX Online API...')
+    // Service 1: Try latex.online
+    try {
+      console.log('Trying latex.online service...')
+      const latexOnlineUrl = 'https://latex.online/compile'
+      
+      const formData = new FormData()
+      formData.append('text', personalizedContent)
+      formData.append('command', 'xelatex')
+      
+      response = await fetch(latexOnlineUrl, {
+        method: 'POST',
+        body: formData,
+      })
+      
+      if (response.ok) {
+        console.log('Successfully compiled with latex.online')
+      } else {
+        throw new Error(`Status: ${response.status}`)
+      }
+    } catch (error) {
+      console.log('latex.online failed:', error.message)
+      lastError = error.message
+      response = null
+    }
     
-    const response = await fetch(latexOnlineUrl, {
-      method: 'POST',
-      body: formData,
-    })
+    // Service 2: Try QuickLaTeX if first service fails
+    if (!response || !response.ok) {
+      try {
+        console.log('Trying QuickLaTeX service...')
+        const quickLatexUrl = 'https://quicklatex.com/latex3.f'
+        
+        const formData = new FormData()
+        formData.append('formula', personalizedContent)
+        formData.append('fformat', 'pdf')
+        formData.append('fsize', '12px')
+        formData.append('fcolor', '000000')
+        formData.append('mode', '0')
+        formData.append('out', '1')
+        formData.append('remhost', 'quicklatex.com')
+        
+        response = await fetch(quickLatexUrl, {
+          method: 'POST',
+          body: formData,
+        })
+        
+        if (response.ok) {
+          console.log('Successfully compiled with QuickLaTeX')
+        } else {
+          throw new Error(`Status: ${response.status}`)
+        }
+      } catch (error) {
+        console.log('QuickLaTeX failed:', error.message)
+        lastError += '; ' + error.message
+        response = null
+      }
+    }
 
-    if (!response.ok) {
-      throw new Error(`LaTeX compilation failed: ${response.status} ${response.statusText}`)
+    if (!response || !response.ok) {
+      throw new Error(`All LaTeX compilation services failed. Last errors: ${lastError}`)
     }
 
     // Get PDF bytes
