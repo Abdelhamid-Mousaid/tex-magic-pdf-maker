@@ -40,15 +40,20 @@ export const AILatexGenerator: React.FC<AILatexGeneratorProps> = ({
   const [validationResult, setValidationResult] = useState<any>(null);
 
   const generatePrompt = () => {
+    const levelName = selectedLevel?.name_fr || 'Mathématiques';
+    const userName = userProfile?.full_name || '[Nom]';
+    const schoolName = userProfile?.school_name || '[École]';
+    const academicYear = userProfile?.academic_year || '[Année]';
+    
     return `IMPORTANT: Réponds UNIQUEMENT avec du code LaTeX valide. Aucune explication, aucun texte avant ou après.
 
 Génère un template LaTeX complet et professionnel pour un cahier de mathématiques avec ces spécifications EXACTES:
 
 INFORMATIONS PERSONNELLES:
-- Niveau: ${selectedLevel?.name_fr || 'Général'}
-- Nom de l'étudiant: ${userProfile?.full_name || '[Nom]'}
-- École: ${userProfile?.school_name || '[École]'}
-- Année académique: ${userProfile?.academic_year || '[Année]'}
+- Niveau: ${levelName}
+- Nom de l'étudiant: ${userName}
+- École: ${schoolName}
+- Année académique: ${academicYear}
 
 STRUCTURE REQUISE (dans l'ordre):
 \\documentclass[12pt,a4paper]{article}
@@ -61,14 +66,14 @@ STRUCTURE REQUISE (dans l'ordre):
 
 \\pagestyle{fancy}
 \\fancyhf{}
-\\fancyhead[L]{${userProfile?.full_name || '[Nom]'}}
-\\fancyhead[C]{${selectedLevel?.name_fr || 'Mathématiques'}}
-\\fancyhead[R]{${userProfile?.academic_year || '[Année]'}}
+\\fancyhead[L]{${userName}}
+\\fancyhead[C]{${levelName}}
+\\fancyhead[R]{${academicYear}}
 \\fancyfoot[C]{\\thepage}
 
-\\title{Cahier de ${selectedLevel?.name_fr || 'Mathématiques'}}
-\\author{${userProfile?.full_name || '[Nom]'}}
-\\date{Année ${userProfile?.academic_year || '[Année]'}}
+\\title{Cahier de ${levelName}}
+\\author{${userName}}
+\\date{Année ${academicYear}}
 
 \\begin{document}
 \\maketitle
@@ -76,20 +81,28 @@ STRUCTURE REQUISE (dans l'ordre):
 \\newpage
 
 \\section{Cours}
-[Contenu des cours]
+[Contenu des cours pour ${levelName}]
 
 \\section{Exercices}
-[Exercices pratiques]
+[Exercices pratiques et applications]
 
 \\section{Devoirs}
-[Devoirs à rendre]
+[Devoirs à rendre et travaux personnels]
 
 \\section{Évaluations}
 [Notes et évaluations]
 
 \\end{document}
 
-RÈGLES STRICTES:
+RÈGLES STRICTES POUR LES CARACTÈRES FRANÇAIS:
+- Utilise directement les caractères accentués: é, è, à, ç, etc.
+- NE PAS utiliser les codes LaTeX complexes
+- Les caractères UTF-8 français sont supportés avec les packages utilisés
+- Exemple: écris "2ème" directement
+- Exemple: écris "École" directement
+- Exemple: écris "mathématiques" directement
+
+RÈGLES STRICTES DE FORMAT:
 - Commencer directement par \\documentclass
 - Finir par \\end{document}
 - Utiliser EXACTEMENT les packages listés

@@ -99,25 +99,84 @@ serve(async (req) => {
       });
 
       if (!altResponse.ok) {
-        // If both fail, create a simple PDF with error message
-        logStep("All LaTeX compilation methods failed, creating error PDF");
+        // If both fail, create a clean error PDF with useful information
+        logStep("All LaTeX compilation methods failed, creating clean error PDF");
         
-        // Return to the original PDF generation but with the raw LaTeX
-        const fallbackResponse = await supabase.functions.invoke('generate-pdf', {
-          body: {
-            userInfo: userInfo,
-            customLatexContent: `ERREUR DE COMPILATION LATEX\n\nLe contenu LaTeX généré n'a pas pu être compilé.\n\nContenu LaTeX original:\n\n${latexContent.substring(0, 1000)}${latexContent.length > 1000 ? '\n...\n[contenu tronqué]' : ''}`
-          }
+        const errorLatex = `\\documentclass[12pt,a4paper]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage[T1]{fontenc}
+\\usepackage[french]{babel}
+\\usepackage[margin=2.5cm]{geometry}
+\\usepackage{xcolor}
+\\usepackage{fancyhdr}
+
+\\pagestyle{fancy}
+\\fancyhf{}
+\\fancyhead[L]{${userInfo.name || '[Nom]'}}
+\\fancyhead[C]{Erreur de Compilation LaTeX}
+\\fancyhead[R]{${new Date().toLocaleDateString('fr-FR')}}
+\\fancyfoot[C]{\\thepage}
+
+\\title{Erreur de Compilation LaTeX}
+\\author{${userInfo.name || '[Nom]'}}
+\\date{${new Date().toLocaleDateString('fr-FR')}}
+
+\\begin{document}
+\\maketitle
+
+\\textcolor{red}{\\textbf{ERREUR DE COMPILATION}}
+
+Le document LaTeX n'a pas pu être compilé en raison d'erreurs dans le code source.
+
+\\textbf{Solutions possibles :}
+\\begin{itemize}
+    \\item Vérifiez la syntaxe LaTeX
+    \\item Assurez-vous que tous les packages sont disponibles
+    \\item Consultez les logs de compilation pour plus de détails
+\\end{itemize}
+
+\\textbf{Niveau :} ${userInfo.level || 'Non spécifié'}
+
+\\textbf{Date de génération :} ${new Date().toLocaleDateString('fr-FR')}
+
+\\end{document}`;
+
+        // Try to compile the error PDF
+        const errorResponse = await fetch('https://latex.api.ytotech.com/builds/sync/pdf', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/pdf',
+          },
+          body: JSON.stringify({
+            cmd: 'pdflatex',
+            resources: [
+              {
+                main: true,
+                file: 'error.tex',
+                content: errorLatex
+              }
+            ]
+          })
         });
 
-        if (fallbackResponse.error) {
-          throw new Error(`Fallback PDF generation failed: ${fallbackResponse.error.message}`);
+        if (errorResponse.ok) {
+          const errorPdfBuffer = await errorResponse.arrayBuffer();
+          const base64Content = btoa(String.fromCharCode(...new Uint8Array(errorPdfBuffer)));
+          const dataUrl = `data:application/pdf;base64,${base64Content}`;
+
+          return new Response(JSON.stringify({
+            success: false,
+            downloadUrl: dataUrl,
+            filename: `latex-error-${Date.now()}.pdf`,
+            message: "Erreur de compilation LaTeX - PDF d'erreur généré"
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          });
         }
 
-        return new Response(JSON.stringify(fallbackResponse.data), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        });
+        throw new Error("LaTeX compilation failed and error PDF could not be generated");
       }
 
       const pdfBuffer = await altResponse.arrayBuffer();
@@ -131,7 +190,7 @@ serve(async (req) => {
         success: true,
         downloadUrl: dataUrl,
         filename: `latex-compiled-${(userInfo.level || 'document').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${Date.now()}.pdf`,
-        message: "LaTeX document compiled successfully"
+        message: "Document LaTeX compilé avec succès"
       };
 
       return new Response(JSON.stringify(result), {
@@ -152,7 +211,7 @@ serve(async (req) => {
       success: true,
       downloadUrl: dataUrl,
       filename: `latex-compiled-${(userInfo.level || 'document').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${Date.now()}.pdf`,
-      message: "LaTeX document compiled successfully"
+      message: "Document LaTeX compilé avec succès"
     };
 
     return new Response(JSON.stringify(result), {
