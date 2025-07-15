@@ -12,6 +12,14 @@ interface Template {
   description?: string;
   file_path: string;
   chapter_number: number;
+  plan_id?: string;
+}
+
+interface UserSubscription {
+  subscription_plans: {
+    id: string;
+    is_free: boolean;
+  };
 }
 
 interface ChapterSelectionModalProps {
@@ -34,24 +42,60 @@ export function ChapterSelectionModal({
   const [selectedChapter, setSelectedChapter] = useState<Template | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
+  const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen && levelId && semester) {
-      fetchTemplates();
+      fetchUserSubscription();
     }
   }, [isOpen, levelId, semester]);
 
-  const fetchTemplates = async () => {
+  const fetchUserSubscription = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .select('subscription_plans(id, is_free)')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single();
+
+      if (error) throw error;
+
+      setUserSubscription(data);
+      await fetchTemplates(data);
+    } catch (error) {
+      console.error('Error fetching user subscription:', error);
+      // Fallback to free plan if error
+      const freePlanData = { subscription_plans: { id: '5aa5f210-a92a-4699-bf03-4cb9d2cfc8b4', is_free: true } };
+      setUserSubscription(freePlanData);
+      await fetchTemplates(freePlanData);
+    }
+  };
+
+  const fetchTemplates = async (subscription: UserSubscription | null = userSubscription) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('system_templates')
         .select('*')
         .eq('level_id', levelId)
         .eq('semester', semester)
-        .eq('is_active', true)
-        .order('chapter_number');
+        .eq('is_active', true);
+
+      // If user has free plan, only show templates assigned to free plan
+      if (subscription?.subscription_plans.is_free) {
+        query = query.eq('plan_id', subscription.subscription_plans.id);
+      }
+      // For paid plans, show templates with matching plan_id OR null (available to all paid plans)
+      else {
+        query = query.or(`plan_id.is.null,plan_id.eq.${subscription?.subscription_plans.id}`);
+      }
+
+      const { data, error } = await query.order('chapter_number');
 
       if (error) throw error;
 
