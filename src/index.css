@@ -6,35 +6,46 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 42 15% 97%;
+    --foreground: 15 15% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 15 15% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 15 15% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Moroccan-inspired colors */
+    --primary: 0 65% 45%; /* Moroccan red/burgundy */
+    --primary-foreground: 42 15% 97%;
+    
+    --secondary: 207 44% 49%; /* Atlas mountain blue */
+    --secondary-foreground: 42 15% 97%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 42 25% 92%;
+    --muted-foreground: 15 10% 45%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 45 93% 55%; /* Moroccan gold */
+    --accent-foreground: 15 15% 15%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 42 20% 88%;
+    --input: 42 20% 95%;
+    --ring: 0 65% 45%;
 
-    --radius: 0.5rem;
+    /* Moroccan gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(0 65% 45%), hsl(15 70% 50%));
+    --gradient-secondary: linear-gradient(135deg, hsl(207 44% 49%), hsl(220 45% 55%));
+    --gradient-accent: linear-gradient(135deg, hsl(45 93% 55%), hsl(35 85% 60%));
+    --gradient-hero: linear-gradient(135deg, hsl(42 15% 97%), hsl(45 25% 92%));
+    
+    /* Moroccan shadows */
+    --shadow-moroccan: 0 8px 25px hsl(0 65% 45% / 0.15);
+    --shadow-gold: 0 4px 15px hsl(45 93% 55% / 0.2);
+
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
 
