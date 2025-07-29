@@ -139,20 +139,33 @@ const PlanLogicHandler: React.FC<PlanLogicHandlerProps> = ({
         throw new Error(response.error.message || 'Erreur lors de la génération');
       }
 
+      // Handle different response formats from edge functions
+      let downloadUrl = '';
+      let filename = '';
+
       if (response.data?.downloadUrl) {
-        setDownloadUrl(response.data.downloadUrl);
-        setGeneratedFileName(response.data.filename || 'document.pdf');
-        setStatus('completed');
-        
-        toast({
-          title: "✅ Génération réussie!",
-          description: contentSelection.allChapters 
-            ? "Votre archive ZIP est prête à télécharger"
-            : "Votre PDF est prêt à télécharger"
-        });
+        // generate-pdf response format
+        downloadUrl = response.data.downloadUrl;
+        filename = response.data.filename || 'document.pdf';
+      } else if (response.data?.pdf_data) {
+        // compile-latex-pdf response format
+        const pdfData = response.data.pdf_data;
+        downloadUrl = `data:application/pdf;base64,${pdfData}`;
+        filename = response.data.filename || 'document.pdf';
       } else {
-        throw new Error('Aucun lien de téléchargement reçu');
+        throw new Error('Format de réponse invalide');
       }
+
+      setDownloadUrl(downloadUrl);
+      setGeneratedFileName(filename);
+      setStatus('completed');
+        
+      toast({
+        title: "✅ Génération réussie!",
+        description: contentSelection.allChapters 
+          ? "Votre archive ZIP est prête à télécharger"
+          : "Votre PDF est prêt à télécharger"
+      });
 
     } catch (error) {
       console.error('Erreur génération PDF:', error);
@@ -168,7 +181,18 @@ const PlanLogicHandler: React.FC<PlanLogicHandlerProps> = ({
 
   const handleDownload = () => {
     if (downloadUrl) {
-      window.open(downloadUrl, '_blank');
+      if (downloadUrl.startsWith('data:')) {
+        // Handle data URL downloads
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = generatedFileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // Handle regular URL downloads
+        window.open(downloadUrl, '_blank');
+      }
       
       toast({
         title: "📥 Téléchargement lancé",
