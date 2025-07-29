@@ -204,7 +204,7 @@ const Dashboard = () => {
 
   if (showProfile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5">
         <div className="container mx-auto px-4 py-8">
           <ProfileSettings onClose={() => setShowProfile(false)} />
         </div>
@@ -214,15 +214,15 @@ const Dashboard = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-3 sm:space-x-4">
-            <BookOpen className="h-8 w-8 sm:h-10 sm:w-10 text-blue-600" />
+            <BookOpen className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Math Planner</h1>
-              <p className="text-sm sm:text-base text-gray-600">Tableau de bord personnel</p>
+              <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">Math Planner Maroc</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">Tableau de bord personnel</p>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
@@ -239,7 +239,7 @@ const Dashboard = () => {
 
         {/* Welcome Section */}
         <div className="mb-6 sm:mb-8">
-          <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
+          <h2 className="text-xl sm:text-2xl font-semibold text-foreground mb-2">
             Bienvenue, {profile?.full_name || 'Utilisateur'}!
           </h2>
           <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
@@ -247,7 +247,7 @@ const Dashboard = () => {
               {subscription?.subscription_plans.name_fr || 'Plan en cours de chargement...'}
             </Badge>
             {!subscription?.subscription_plans.is_free && (
-              <div className="flex items-center space-x-1 text-yellow-600">
+              <div className="flex items-center space-x-1 text-accent">
                 <Star className="h-4 w-4 fill-current" />
                 <span className="text-sm font-medium">Plan Premium</span>
               </div>
@@ -259,10 +259,10 @@ const Dashboard = () => {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6 lg:space-y-8">
             {/* Current Plan */}
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <Card className="shadow-lg border-0 bg-card/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <BookOpen className="h-6 w-6 text-blue-600" />
+                  <BookOpen className="h-6 w-6 text-primary" />
                   <span>Votre Plan Actuel</span>
                 </CardTitle>
                 <CardDescription>
@@ -272,7 +272,7 @@ const Dashboard = () => {
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
-                    <span className="text-lg font-semibold text-gray-900">
+                    <span className="text-lg font-semibold text-foreground">
                       {subscription?.subscription_plans.name_fr}
                     </span>
                     <Badge variant={subscription?.subscription_plans.is_free ? "secondary" : "default"}>
@@ -283,7 +283,7 @@ const Dashboard = () => {
                   <Button
                     onClick={handleGenerateLatex}
                     disabled={isGenerating}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-sm sm:text-base"
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3 text-sm sm:text-base"
                   >
                     {isGenerating ? (
                       <>
@@ -306,10 +306,10 @@ const Dashboard = () => {
           {/* Sidebar */}
           <div className="space-y-4 lg:space-y-6">
             {/* Upgrade Plans */}
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <Card className="shadow-lg border-0 bg-card/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <CreditCard className="h-6 w-6 text-purple-600" />
+                  <CreditCard className="h-6 w-6 text-secondary" />
                   <span>Plans Disponibles</span>
                 </CardTitle>
                 <CardDescription>
@@ -319,7 +319,7 @@ const Dashboard = () => {
               <CardContent>
                 <Button
                   onClick={() => setShowPlans(true)}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm sm:text-base"
+                  className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground text-sm sm:text-base"
                 >
                   Voir les Plans
                 </Button>
@@ -327,21 +327,21 @@ const Dashboard = () => {
             </Card>
 
             {/* Quick Stats */}
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <Card className="shadow-lg border-0 bg-card/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle>Statistiques</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Documents générés</span>
+                  <span className="text-muted-foreground">Documents générés</span>
                   <span className="font-semibold">-</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Plan actuel</span>
+                  <span className="text-muted-foreground">Plan actuel</span>
                   <span className="font-semibold text-xs sm:text-sm truncate max-w-24 sm:max-w-none">{subscription?.subscription_plans.name_fr}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Statut</span>
+                  <span className="text-muted-foreground">Statut</span>
                   <Badge variant="default" className="text-xs">Actif</Badge>
                 </div>
               </CardContent>
