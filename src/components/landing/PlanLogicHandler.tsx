@@ -111,6 +111,25 @@ const PlanLogicHandler: React.FC<PlanLogicHandlerProps> = ({
         selectedPlan
       };
 
+      // Create level name mapping to match storage paths
+      const levelNameMapping: { [key: string]: string } = {
+        '1ère Bac Lettres et Sciences Humaines Français': '1BACLSHF',
+        '1ère Bac Sciences et Technologies Français': '1BACSF',
+        '2ème Bac Sciences Mathématiques': '2BACSM',
+        '2ème Bac Sciences Physiques et Chimiques Français': '2BACSPCF',
+        '2ème Bac Sciences de la Vie et de la Terre Français': '2BACSVTF',
+        '1ère Année Collège': '1APIC',
+        '2ème Année Collège': '2APIC',
+        '3ème Année Collège': '3APIC',
+        'Tronc Commun Sciences Français': 'TCSF',
+        'Tronc Commun Lettres et Sciences Humaines Français': 'TCLSHF'
+      };
+
+      const levelCode = levelNameMapping[contentSelection.levelName];
+      if (!levelCode) {
+        throw new Error(`Niveau non supporté: ${contentSelection.levelName}`);
+      }
+
       let response;
       
       if (contentSelection.allChapters) {
@@ -122,7 +141,7 @@ const PlanLogicHandler: React.FC<PlanLogicHandlerProps> = ({
         // Generate single PDF
         response = await supabase.functions.invoke('compile-latex-pdf', {
           body: {
-            template_path: `templates/${contentSelection.levelId}/${contentSelection.semester}/${contentSelection.chapter}.tex`,
+            template_path: `${levelCode}/${contentSelection.semester}/${contentSelection.chapter.replace('_', '-')}.tex`,
             user_info: requestData.userInfo,
             level_name: contentSelection.levelName,
             semester: contentSelection.semester,
