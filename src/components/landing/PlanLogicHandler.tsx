@@ -132,18 +132,34 @@ const PlanLogicHandler: React.FC<PlanLogicHandlerProps> = ({
       };
 
       const levelCode = levelNameMapping[contentSelection.levelName];
+      console.log('Level mapping debug:', {
+        levelName: contentSelection.levelName,
+        levelCode,
+        availableMappings: Object.keys(levelNameMapping)
+      });
+      
       if (!levelCode) {
+        console.error(`Niveau non supporté: ${contentSelection.levelName}`);
         throw new Error(`Niveau non supporté: ${contentSelection.levelName}`);
       }
 
       let response;
       
+      console.log('Generation request data:', {
+        contentSelection,
+        allChapters: contentSelection.allChapters,
+        levelCode,
+        requestData
+      });
+      
       if (contentSelection.allChapters) {
+        console.log('Calling generate-bulk-pdfs function');
         // Generate multiple PDFs and zip them
         response = await supabase.functions.invoke('generate-bulk-pdfs', {
           body: requestData
         });
       } else {
+        console.log('Calling compile-latex-pdf function');
         // Generate single PDF
         response = await supabase.functions.invoke('compile-latex-pdf', {
           body: {
@@ -156,6 +172,8 @@ const PlanLogicHandler: React.FC<PlanLogicHandlerProps> = ({
           }
         });
       }
+
+      console.log('Supabase function response:', response);
 
       clearInterval(progressInterval);
       setProgress(100);

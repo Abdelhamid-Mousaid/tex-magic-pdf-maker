@@ -5,3 +5,12 @@ verify_jwt = true
 
 [functions.generate-latex]
 verify_jwt = true
+
+[functions.compile-latex]
+verify_jwt = true
+
+[functions.compile-latex-pdf]
+verify_jwt = true
+
+[functions.generate-bulk-pdfs]
+verify_jwt = true
