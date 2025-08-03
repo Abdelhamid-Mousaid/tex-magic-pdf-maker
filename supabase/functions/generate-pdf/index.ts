@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { encode as base64Encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
-import { authenticateUser, fetchTemplateContent } from "./auth-handler.ts";
+import { authenticateUser, fetchTemplateContent, validateLatexContent } from "./auth-handler.ts";
 import { generatePDF } from "./pdf-generator.ts";
 import { RequestBody, PdfGenerationResult } from "./types.ts";
 
@@ -58,8 +58,8 @@ serve(async (req) => {
 
     // Use custom AI-generated LaTeX content if provided
     if (customLatexContent) {
-      templateContent = customLatexContent;
-      logStep('Using AI-generated LaTeX content', { contentLength: customLatexContent.length });
+      templateContent = validateLatexContent(customLatexContent);
+      logStep('Using AI-generated LaTeX content', { originalLength: customLatexContent.length, sanitizedLength: templateContent.length });
     }
 
     // Generate PDF content

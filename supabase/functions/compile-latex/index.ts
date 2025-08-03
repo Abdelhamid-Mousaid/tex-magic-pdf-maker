@@ -16,6 +16,35 @@ interface RequestBody {
   };
 }
 
+// Validate and sanitize LaTeX content
+function validateLatexContent(content: string): string {
+  if (!content || typeof content !== 'string') {
+    throw new Error("Invalid LaTeX content provided");
+  }
+  
+  // Check content length
+  if (content.length > 50000) {
+    throw new Error("LaTeX content too large (max 50KB)");
+  }
+  
+  // Remove potentially dangerous commands
+  const dangerousCommands = [
+    '\\input', '\\include', '\\write', '\\openout', '\\closeout',
+    '\\immediate', '\\special', '\\catcode', '\\read', '\\openin'
+  ];
+  
+  let sanitizedContent = content;
+  dangerousCommands.forEach(cmd => {
+    const regex = new RegExp(`\\${cmd}\\b`, 'gi');
+    if (regex.test(sanitizedContent)) {
+      logStep("Blocked dangerous LaTeX command", { command: cmd });
+      sanitizedContent = sanitizedContent.replace(regex, `% BLOCKED: ${cmd}`);
+    }
+  });
+  
+  return sanitizedContent;
+}
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[COMPILE-LATEX] ${step}${detailsStr}`);
@@ -49,7 +78,14 @@ serve(async (req) => {
 
     // Parse request body
     const body: RequestBody = await req.json();
-    const { latexContent, userInfo } = body;
+    let { latexContent, userInfo } = body;
+    
+    // Validate and sanitize input
+    latexContent = validateLatexContent(latexContent);
+    
+    if (!userInfo || !userInfo.level || !userInfo.name) {
+      throw new Error("Invalid user information provided");
+    }
 
     if (!latexContent || !latexContent.trim()) {
       throw new Error("No LaTeX content provided");
